@@ -21,6 +21,7 @@ EdinetcodeDlInfo.csv
 
 # Cache
 cache/
+temp_csv/
 *.json
 
 # IDE
