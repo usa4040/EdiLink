@@ -202,7 +202,7 @@ def get_issuer_history(filer_id: int, issuer_id: int, db: Session = Depends(get_
         },
         "filer": {
             "id": filer.id,
-            "edinet_code": filer.edinet_code,
+            "edinet_code": filer.primary_edinet_code,
             "name": filer.name
         },
         "history": history
