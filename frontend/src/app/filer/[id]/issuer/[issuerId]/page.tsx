@@ -230,25 +230,6 @@ export default function IssuerHistory() {
                     </div>
                 )}
             </section>
-
-            {/* EDINET原本へのリンク */}
-            <section className="mt-8 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-                <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                            <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="text-white font-medium">EDINETで原本を確認</p>
-                            <p className="text-sm text-zinc-400">
-                                各報告書のdocIDをクリックすると、EDINET公式サイトで原本を閲覧できます
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </div>
     );
 }
