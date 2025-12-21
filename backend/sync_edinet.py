@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-from backend.models import Base, Filer, Issuer, Filing, get_engine
+from backend.models import Base, Filer, FilerCode, Issuer, Filing, get_engine
 from backend.database import get_db_session
 
 # .envの読み込み
@@ -124,15 +124,28 @@ def sync_documents(
                     continue
                 
                 # 1. 提出者（Filer）の登録/取得
-                filer = db.query(Filer).filter(Filer.edinet_code == edinet_code).first()
-                if not filer:
+                # EDINETコードからFilerCodeを検索
+                filer_code = db.query(FilerCode).filter(FilerCode.edinet_code == edinet_code).first()
+                
+                if filer_code:
+                    filer = filer_code.filer
+                else:
+                    # 新規Filerを作成
                     filer = Filer(
-                        edinet_code=edinet_code,
                         name=doc.get("filerName", ""),
                         sec_code=str(doc.get("secCode", "")) if doc.get("secCode") else None,
                         jcn=str(doc.get("JCN", "")) if doc.get("JCN") else None
                     )
                     db.add(filer)
+                    db.flush()
+                    
+                    # FilerCodeを作成
+                    filer_code = FilerCode(
+                        filer_id=filer.id,
+                        edinet_code=edinet_code,
+                        name=doc.get("filerName", "")
+                    )
+                    db.add(filer_code)
                     db.flush()
                     new_filers += 1
                 
@@ -363,9 +376,9 @@ def sync_holding_details(filer_edinet_code: str = None, limit: int = None):
         )
         
         if filer_edinet_code:
-            filer = db.query(Filer).filter(Filer.edinet_code == filer_edinet_code).first()
-            if filer:
-                query = query.filter(Filing.filer_id == filer.id)
+            filer_code = db.query(FilerCode).filter(FilerCode.edinet_code == filer_edinet_code).first()
+            if filer_code:
+                query = query.filter(Filing.filer_id == filer_code.filer_id)
         
         filings = query.order_by(Filing.submit_date.desc()).all()
         

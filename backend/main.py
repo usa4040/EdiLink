@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from backend.database import get_db
-from backend.models import Filer, Issuer, Filing, Base, get_engine
+from backend.models import Filer, FilerCode, Issuer, Filing, Base, get_engine
 from backend import crud, schemas
 
 # データベース初期化
@@ -43,7 +43,7 @@ def get_filers(db: Session = Depends(get_db)):
         stats = crud.get_filer_stats(db, filer.id)
         result.append(schemas.FilerResponse(
             id=filer.id,
-            edinet_code=filer.edinet_code,
+            edinet_code=filer.primary_edinet_code,
             name=filer.name,
             sec_code=filer.sec_code,
             created_at=filer.created_at,
@@ -64,7 +64,7 @@ def get_filer(filer_id: int, db: Session = Depends(get_db)):
     stats = crud.get_filer_stats(db, filer.id)
     return schemas.FilerResponse(
         id=filer.id,
-        edinet_code=filer.edinet_code,
+        edinet_code=filer.primary_edinet_code,
         name=filer.name,
         sec_code=filer.sec_code,
         created_at=filer.created_at,
@@ -84,7 +84,7 @@ def create_filer(filer: schemas.FilerCreate, db: Session = Depends(get_db)):
     new_filer = crud.create_filer(db, filer.edinet_code, filer.name, filer.sec_code)
     return schemas.FilerResponse(
         id=new_filer.id,
-        edinet_code=new_filer.edinet_code,
+        edinet_code=new_filer.primary_edinet_code,
         name=new_filer.name,
         sec_code=new_filer.sec_code,
         created_at=new_filer.created_at,

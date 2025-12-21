@@ -6,18 +6,44 @@ from datetime import datetime
 Base = declarative_base()
 
 class Filer(Base):
-    """大量保有報告書の提出者（光通信など）"""
+    """大量保有報告書の提出者（光通信など）- 集約ルート"""
     __tablename__ = "filers"
     
     id = Column(Integer, primary_key=True, index=True)
-    edinet_code = Column(String, unique=True, nullable=False, index=True)  # E04948
     name = Column(String, nullable=False)  # 株式会社光通信
-    sec_code = Column(String, nullable=True)  # 94350
+    sec_code = Column(String, nullable=True)  # 94350（代表的な証券コード）
     jcn = Column(String, nullable=True)  # 法人番号
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # リレーション
+    filer_codes = relationship("FilerCode", back_populates="filer", cascade="all, delete-orphan")
     filings = relationship("Filing", back_populates="filer")
+    
+    @property
+    def primary_edinet_code(self):
+        """代表的なEDINETコードを返す"""
+        if self.filer_codes:
+            return self.filer_codes[0].edinet_code
+        return None
+    
+    @property
+    def edinet_codes(self):
+        """すべてのEDINETコードをリストで返す"""
+        return [fc.edinet_code for fc in self.filer_codes]
+
+
+class FilerCode(Base):
+    """Filerが持つEDINETコード（1つのFilerが複数のコードを持てる）"""
+    __tablename__ = "filer_codes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    filer_id = Column(Integer, ForeignKey("filers.id"), nullable=False)
+    edinet_code = Column(String, unique=True, nullable=False, index=True)  # E04948
+    name = Column(String, nullable=True)  # このコードでの提出者名（異なる場合）
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    filer = relationship("Filer", back_populates="filer_codes")
 
 
 class Issuer(Base):

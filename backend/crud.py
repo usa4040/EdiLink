@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import List, Optional
-from backend.models import Filer, Issuer, Filing, HoldingDetail
+from backend.models import Filer, FilerCode, Issuer, Filing, HoldingDetail
 
 
 def get_filers(db: Session) -> List[Filer]:
@@ -16,13 +16,18 @@ def get_filer_by_id(db: Session, filer_id: int) -> Optional[Filer]:
 
 def get_filer_by_edinet_code(db: Session, edinet_code: str) -> Optional[Filer]:
     """EDINETコードで提出者を取得"""
-    return db.query(Filer).filter(Filer.edinet_code == edinet_code).first()
+    filer_code = db.query(FilerCode).filter(FilerCode.edinet_code == edinet_code).first()
+    return filer_code.filer if filer_code else None
 
 
 def create_filer(db: Session, edinet_code: str, name: str, sec_code: str = None) -> Filer:
-    """新しい提出者を作成"""
-    filer = Filer(edinet_code=edinet_code, name=name, sec_code=sec_code)
+    """新しい提出者を作成（FilerCodeも同時に作成）"""
+    filer = Filer(name=name, sec_code=sec_code)
     db.add(filer)
+    db.flush()
+    
+    filer_code = FilerCode(filer_id=filer.id, edinet_code=edinet_code, name=name)
+    db.add(filer_code)
     db.commit()
     db.refresh(filer)
     return filer
