@@ -150,6 +150,8 @@ def get_filings_by_filer(filer_id: int, limit: int = 100, db: Session = Depends(
 @app.get("/api/filers/{filer_id}/issuers/{issuer_id}/history")
 def get_issuer_history(filer_id: int, issuer_id: int, db: Session = Depends(get_db)):
     """銘柄の報告書履歴を取得"""
+    from backend.models import HoldingDetail
+    
     filer = crud.get_filer_by_id(db, filer_id)
     issuer = crud.get_issuer_by_id(db, issuer_id)
     
@@ -161,15 +163,35 @@ def get_issuer_history(filer_id: int, issuer_id: int, db: Session = Depends(get_
     filings = crud.get_filings_by_issuer_and_filer(db, issuer_id, filer_id)
     
     history = []
-    for filing in filings:
+    prev_ratio = None
+    
+    # 古い順に処理して差分を計算
+    for filing in reversed(filings):
+        # HoldingDetailを取得
+        holding = db.query(HoldingDetail).filter(HoldingDetail.filing_id == filing.id).first()
+        
+        shares_held = holding.shares_held if holding else None
+        holding_ratio = holding.holding_ratio if holding else None
+        
+        # 前回との差分を計算
+        ratio_change = None
+        if holding_ratio is not None and prev_ratio is not None:
+            ratio_change = round(holding_ratio - prev_ratio, 2)
+        
         history.append({
             "doc_id": filing.doc_id,
             "submit_date": filing.submit_date,
             "doc_description": filing.doc_description,
-            "shares_held": None,  # 後で抽出
-            "holding_ratio": None,  # 後で抽出
-            "ratio_change": None
+            "shares_held": shares_held,
+            "holding_ratio": holding_ratio,
+            "ratio_change": ratio_change
         })
+        
+        if holding_ratio is not None:
+            prev_ratio = holding_ratio
+    
+    # 新しい順に戻す
+    history.reverse()
     
     return {
         "issuer": {
