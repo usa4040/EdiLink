@@ -177,6 +177,11 @@ export default function FilerDetail() {
                                 {/* ヘッダー */}
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-2">
+                                        {issuer.filing_count === 1 && (
+                                            <span className="px-2 py-1 bg-emerald-100 text-emerald-600 text-xs font-bold rounded">
+                                                New!
+                                            </span>
+                                        )}
                                         {issuer.sec_code && (
                                             <span className="px-2 py-1 bg-indigo-100 text-indigo-600 text-xs font-medium rounded">
                                                 {issuer.sec_code.slice(0, 4)}
@@ -202,7 +207,7 @@ export default function FilerDetail() {
                                         <p className="text-xs text-gray-400 mb-1">増減</p>
                                         {issuer.ratio_change !== null && issuer.ratio_change !== undefined ? (
                                             <p className={`text-lg font-semibold ${issuer.ratio_change > 0 ? "text-emerald-500" :
-                                                    issuer.ratio_change < 0 ? "text-red-500" : "text-gray-400"
+                                                issuer.ratio_change < 0 ? "text-red-500" : "text-gray-400"
                                                 }`}>
                                                 {issuer.ratio_change > 0 ? "+" : ""}{formatRatio(issuer.ratio_change)}
                                             </p>
