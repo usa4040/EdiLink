@@ -123,9 +123,6 @@ export default function FilerDetail() {
                         <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                                 <h1 className="text-3xl font-bold text-white">{filer.name}</h1>
-                                <span className="px-3 py-1 bg-indigo-500/20 text-indigo-400 text-sm rounded-full">
-                                    {filer.edinet_code}
-                                </span>
                             </div>
                             {filer.sec_code && (
                                 <p className="text-zinc-400">証券コード: {filer.sec_code}</p>
@@ -160,7 +157,6 @@ export default function FilerDetail() {
                                 <thead>
                                     <tr className="border-b border-[#2d2d44]">
                                         <th className="text-left px-6 py-4 text-sm font-medium text-zinc-400">銘柄</th>
-                                        <th className="text-left px-6 py-4 text-sm font-medium text-zinc-400">EDINETコード</th>
                                         <th className="text-right px-6 py-4 text-sm font-medium text-zinc-400">報告書数</th>
                                         <th className="text-right px-6 py-4 text-sm font-medium text-zinc-400">最終報告日</th>
                                         <th className="text-center px-6 py-4 text-sm font-medium text-zinc-400">操作</th>
@@ -186,9 +182,6 @@ export default function FilerDetail() {
                                                         )}
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-zinc-400 font-mono text-sm">
-                                                {issuer.edinet_code}
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-sm rounded-full">

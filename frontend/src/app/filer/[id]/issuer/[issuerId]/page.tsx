@@ -152,14 +152,9 @@ export default function IssuerHistory() {
                                 <h1 className="text-2xl font-bold text-white mb-1">
                                     {data.issuer.name || data.issuer.edinet_code}
                                 </h1>
-                                <div className="flex items-center gap-3 text-sm">
-                                    <span className="px-2 py-0.5 bg-zinc-700 text-zinc-300 rounded">
-                                        {data.issuer.edinet_code}
-                                    </span>
-                                    {data.issuer.sec_code && (
-                                        <span className="text-zinc-400">証券コード: {data.issuer.sec_code}</span>
-                                    )}
-                                </div>
+                                {data.issuer.sec_code && (
+                                    <p className="text-zinc-400 text-sm">証券コード: {data.issuer.sec_code}</p>
+                                )}
                                 <p className="text-zinc-500 mt-2">
                                     提出者: <span className="text-zinc-300">{data.filer.name}</span>
                                 </p>
@@ -200,7 +195,7 @@ export default function IssuerHistory() {
                                             </span>
                                         </div>
 
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                                        <div className="grid grid-cols-3 gap-4 mt-4">
                                             <div>
                                                 <p className="text-xs text-zinc-500 mb-1">保有株数</p>
                                                 <p className="text-lg font-semibold text-white">
@@ -216,8 +211,8 @@ export default function IssuerHistory() {
                                             <div>
                                                 <p className="text-xs text-zinc-500 mb-1">増減</p>
                                                 <p className={`text-lg font-semibold ${item.ratio_change === null ? "text-zinc-400" :
-                                                        item.ratio_change > 0 ? "text-emerald-400" :
-                                                            item.ratio_change < 0 ? "text-red-400" : "text-zinc-400"
+                                                    item.ratio_change > 0 ? "text-emerald-400" :
+                                                        item.ratio_change < 0 ? "text-red-400" : "text-zinc-400"
                                                     }`}>
                                                     {item.ratio_change !== null ? (
                                                         <>
@@ -226,17 +221,6 @@ export default function IssuerHistory() {
                                                         </>
                                                     ) : "-"}
                                                 </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xs text-zinc-500 mb-1">書類ID</p>
-                                                <a
-                                                    href={`https://disclosure.edinet-fsa.go.jp/E01EW/BLMainController.jsp?uji.verb=W1E63011CXW1E6A011DSPSub&uji.bean=ek.bean.parent.EKW1E6A011FBParentDSPBean&TID=W1E63011&PID=W1E63011&SESSIONKEY=null&lgKbn=2&pkbn=1&skbn=1&dskb=&askb=&dflg=0&iflg=0&preId=1&sec=${item.doc_id}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-sm text-indigo-400 hover:text-indigo-300 font-mono"
-                                                >
-                                                    {item.doc_id}
-                                                </a>
                                             </div>
                                         </div>
                                     </div>
