@@ -55,14 +55,51 @@ def get_issuers_by_filer(db: Session, filer_id: int) -> List[dict]:
         .all()
     )
     
-    return [
-        {
+    # 各銘柄の最新保有比率と増減比を取得
+    issuer_data = []
+    for issuer, latest_date, filing_count in results:
+        # この銘柄の最新2件のFilingを取得
+        latest_filings = (
+            db.query(Filing)
+            .filter(Filing.filer_id == filer_id)
+            .filter(Filing.issuer_id == issuer.id)
+            .order_by(desc(Filing.submit_date))
+            .limit(2)
+            .all()
+        )
+        
+        latest_ratio = None
+        ratio_change = None
+        
+        if latest_filings:
+            # 最新の報告書のHoldingDetailを取得
+            latest_holding = (
+                db.query(HoldingDetail)
+                .filter(HoldingDetail.filing_id == latest_filings[0].id)
+                .first()
+            )
+            if latest_holding and latest_holding.holding_ratio is not None:
+                latest_ratio = latest_holding.holding_ratio
+                
+                # 2件目がある場合は増減比を計算
+                if len(latest_filings) > 1:
+                    prev_holding = (
+                        db.query(HoldingDetail)
+                        .filter(HoldingDetail.filing_id == latest_filings[1].id)
+                        .first()
+                    )
+                    if prev_holding and prev_holding.holding_ratio is not None:
+                        ratio_change = latest_ratio - prev_holding.holding_ratio
+        
+        issuer_data.append({
             "issuer": issuer,
             "latest_filing_date": latest_date,
-            "filing_count": filing_count
-        }
-        for issuer, latest_date, filing_count in results
-    ]
+            "filing_count": filing_count,
+            "latest_ratio": latest_ratio,
+            "ratio_change": ratio_change
+        })
+    
+    return issuer_data
 
 
 def get_issuer_by_id(db: Session, issuer_id: int) -> Optional[Issuer]:

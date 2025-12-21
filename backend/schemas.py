@@ -36,6 +36,7 @@ class IssuerResponse(IssuerBase):
     id: int
     latest_filing_date: Optional[datetime] = None
     latest_ratio: Optional[float] = None
+    ratio_change: Optional[float] = None
     filing_count: Optional[int] = None
 
     class Config:

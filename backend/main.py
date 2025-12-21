@@ -113,6 +113,8 @@ def get_issuers_by_filer(filer_id: int, db: Session = Depends(get_db)):
             name=issuer.name or issuer.edinet_code,
             sec_code=issuer.sec_code,
             latest_filing_date=item["latest_filing_date"],
+            latest_ratio=item.get("latest_ratio"),
+            ratio_change=item.get("ratio_change"),
             filing_count=item["filing_count"]
         ))
     return result

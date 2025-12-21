@@ -21,6 +21,7 @@ interface Issuer {
     latest_filing_date: string | null;
     filing_count: number;
     latest_ratio?: number | null;
+    ratio_change?: number | null;
 }
 
 export default function FilerDetail() {
@@ -31,6 +32,7 @@ export default function FilerDetail() {
     const [issuers, setIssuers] = useState<Issuer[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         if (filerId) {
@@ -64,19 +66,27 @@ export default function FilerDetail() {
         const date = new Date(dateString);
         return date.toLocaleDateString("ja-JP", {
             year: "numeric",
-            month: "short",
-            day: "numeric",
-        });
+            month: "2-digit",
+            day: "2-digit",
+        }).replace(/\//g, "-");
     };
+
+    const formatRatio = (ratio: number | null | undefined) => {
+        if (ratio === null || ratio === undefined) return "-";
+        return `${ratio.toFixed(2)}%`;
+    };
+
+    const filteredIssuers = issuers.filter(issuer =>
+        (issuer.name || issuer.edinet_code).toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (issuer.sec_code || "").includes(searchQuery)
+    );
 
     if (loading) {
         return (
-            <div className="max-w-7xl mx-auto px-6">
-                <div className="flex items-center justify-center min-h-[400px]">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                        <p className="text-zinc-400">データを読み込み中...</p>
-                    </div>
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-gray-500">データを読み込み中...</p>
                 </div>
             </div>
         );
@@ -84,129 +94,125 @@ export default function FilerDetail() {
 
     if (error || !filer) {
         return (
-            <div className="max-w-7xl mx-auto px-6">
-                <div className="bg-red-900/20 border border-red-500/50 rounded-xl p-6 text-center">
-                    <p className="text-red-400">{error || "提出者が見つかりません"}</p>
-                    <Link
-                        href="/"
-                        className="mt-4 inline-block px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors"
-                    >
-                        トップに戻る
-                    </Link>
-                </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                <p className="text-red-600">{error || "提出者が見つかりません"}</p>
+                <Link
+                    href="/"
+                    className="mt-4 inline-block px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                >
+                    トップに戻る
+                </Link>
             </div>
         );
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-6">
-            {/* パンくずリスト */}
-            <nav className="mb-6 animate-fade-in">
-                <ol className="flex items-center gap-2 text-sm">
-                    <li>
-                        <Link href="/" className="text-zinc-400 hover:text-white transition-colors">
-                            ホーム
-                        </Link>
-                    </li>
-                    <li className="text-zinc-600">/</li>
-                    <li className="text-white">{filer.name}</li>
-                </ol>
-            </nav>
-
-            {/* 提出者情報 */}
-            <section className="mb-8 animate-fade-in">
-                <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-2xl p-8">
-                    <div className="flex items-start gap-6">
-                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-3xl">
-                            {filer.name.charAt(0)}
-                        </div>
-                        <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                                <h1 className="text-3xl font-bold text-white">{filer.name}</h1>
-                            </div>
-                            {filer.sec_code && (
-                                <p className="text-zinc-400">証券コード: {filer.sec_code}</p>
-                            )}
-                            <div className="flex gap-8 mt-4">
-                                <div>
-                                    <p className="text-3xl font-bold text-indigo-400">{filer.issuer_count || 0}</p>
-                                    <p className="text-sm text-zinc-500">保有銘柄数</p>
-                                </div>
-                                <div>
-                                    <p className="text-3xl font-bold text-purple-400">{filer.filing_count || 0}</p>
-                                    <p className="text-sm text-zinc-500">報告書数</p>
-                                </div>
-                            </div>
-                        </div>
+        <div>
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                    <Link href="/" className="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </Link>
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">{filer.name}</h1>
+                        <p className="text-gray-500 mt-1">保有銘柄リスト・動向分析</p>
                     </div>
                 </div>
-            </section>
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                            type="text"
+                            placeholder="銘柄名 / コード..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 pr-4 py-2 w-56 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                    </div>
+                    <button
+                        onClick={() => {
+                            setLoading(true);
+                            fetchData();
+                        }}
+                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
 
-            {/* 保有銘柄一覧 */}
-            <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
-                <h2 className="text-2xl font-bold text-white mb-6">保有銘柄一覧</h2>
+            {/* 銘柄一覧 */}
+            <section>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <h2 className="text-lg font-semibold text-gray-900">保有銘柄一覧</h2>
+                    </div>
+                    <span className="text-sm text-gray-500">全 {filteredIssuers.length} 銘柄</span>
+                </div>
 
-                {issuers.length === 0 ? (
-                    <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-2xl p-12 text-center">
-                        <p className="text-zinc-400">保有銘柄データがありません</p>
+                {filteredIssuers.length === 0 ? (
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-12 text-center">
+                        <p className="text-gray-500">
+                            {searchQuery ? "検索結果がありません" : "保有銘柄データがありません"}
+                        </p>
                     </div>
                 ) : (
-                    <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-2xl overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-[#2d2d44]">
-                                        <th className="text-left px-6 py-4 text-sm font-medium text-zinc-400">銘柄</th>
-                                        <th className="text-right px-6 py-4 text-sm font-medium text-zinc-400">報告書数</th>
-                                        <th className="text-right px-6 py-4 text-sm font-medium text-zinc-400">最終報告日</th>
-                                        <th className="text-center px-6 py-4 text-sm font-medium text-zinc-400">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {issuers.map((issuer, index) => (
-                                        <tr
-                                            key={issuer.id}
-                                            className="border-b border-[#2d2d44] hover:bg-indigo-500/5 transition-colors table-row-striped"
-                                        >
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm">
-                                                        {(issuer.name || issuer.edinet_code).charAt(0)}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium text-white">
-                                                            {issuer.name || issuer.edinet_code}
-                                                        </p>
-                                                        {issuer.sec_code && (
-                                                            <p className="text-xs text-zinc-500">{issuer.sec_code}</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-sm rounded-full">
-                                                    {issuer.filing_count}件
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-zinc-400 text-sm">
-                                                {formatDate(issuer.latest_filing_date)}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <Link
-                                                    href={`/filer/${filerId}/issuer/${issuer.id}`}
-                                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm rounded-lg transition-colors"
-                                                >
-                                                    履歴を見る
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                    </svg>
-                                                </Link>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredIssuers.map((issuer) => (
+                            <Link
+                                key={issuer.id}
+                                href={`/filer/${filerId}/issuer/${issuer.id}`}
+                                className="bg-white border border-gray-200 rounded-xl p-5 hover:border-indigo-300 hover:shadow-md transition-all"
+                            >
+                                {/* ヘッダー */}
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        {issuer.sec_code && (
+                                            <span className="px-2 py-1 bg-indigo-100 text-indigo-600 text-xs font-medium rounded">
+                                                {issuer.sec_code.slice(0, 4)}
+                                            </span>
+                                        )}
+                                        <span className="text-xs text-gray-400">{formatDate(issuer.latest_filing_date)}</span>
+                                    </div>
+                                    <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </div>
+
+                                {/* 銘柄名 */}
+                                <h3 className="font-semibold text-gray-900 mb-4 line-clamp-2">{issuer.name || issuer.edinet_code}</h3>
+
+                                {/* 保有比率 */}
+                                <div className="flex items-end justify-between">
+                                    <div>
+                                        <p className="text-xs text-gray-400 mb-1">保有比率</p>
+                                        <p className="text-2xl font-bold text-gray-900">{formatRatio(issuer.latest_ratio)}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs text-gray-400 mb-1">増減</p>
+                                        {issuer.ratio_change !== null && issuer.ratio_change !== undefined ? (
+                                            <p className={`text-lg font-semibold ${issuer.ratio_change > 0 ? "text-emerald-500" :
+                                                    issuer.ratio_change < 0 ? "text-red-500" : "text-gray-400"
+                                                }`}>
+                                                {issuer.ratio_change > 0 ? "+" : ""}{formatRatio(issuer.ratio_change)}
+                                            </p>
+                                        ) : (
+                                            <p className="text-lg text-gray-400">-</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
                     </div>
                 )}
             </section>
