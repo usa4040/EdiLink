@@ -118,13 +118,10 @@ export default function Home() {
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-2xl p-6 card-hover animate-fade-in">
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start mb-4">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
                       {filer.name.charAt(0)}
                     </div>
-                    <span className="px-2 py-1 bg-indigo-500/20 text-indigo-400 text-xs rounded-full">
-                      {filer.edinet_code}
-                    </span>
                   </div>
 
                   <h3 className="text-lg font-semibold text-white mb-2 truncate">
