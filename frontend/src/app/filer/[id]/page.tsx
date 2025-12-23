@@ -33,6 +33,8 @@ export default function FilerDetail() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [sortKey, setSortKey] = useState<"date" | "ratio" | "name" | "change">("date");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
     const fetchData = useCallback(async () => {
         try {
@@ -80,6 +82,36 @@ export default function FilerDetail() {
         (issuer.name || issuer.edinet_code).toLowerCase().includes(searchQuery.toLowerCase()) ||
         (issuer.sec_code || "").includes(searchQuery)
     );
+
+    // ソート処理
+    const sortedIssuers = [...filteredIssuers].sort((a, b) => {
+        let comparison = 0;
+
+        switch (sortKey) {
+            case "date":
+                const dateA = a.latest_filing_date ? new Date(a.latest_filing_date).getTime() : 0;
+                const dateB = b.latest_filing_date ? new Date(b.latest_filing_date).getTime() : 0;
+                comparison = dateA - dateB;
+                break;
+            case "ratio":
+                const ratioA = a.latest_ratio ?? -1;
+                const ratioB = b.latest_ratio ?? -1;
+                comparison = ratioA - ratioB;
+                break;
+            case "change":
+                const changeA = a.ratio_change ?? -999;
+                const changeB = b.ratio_change ?? -999;
+                comparison = changeA - changeB;
+                break;
+            case "name":
+                const nameA = a.name || a.edinet_code;
+                const nameB = b.name || b.edinet_code;
+                comparison = nameA.localeCompare(nameB, "ja");
+                break;
+        }
+
+        return sortOrder === "asc" ? comparison : -comparison;
+    });
 
     if (loading) {
         return (
@@ -131,7 +163,7 @@ export default function FilerDetail() {
                             placeholder="銘柄名 / コード..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
+                            className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg bg-gray-50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white text-sm sm:text-base"
                         />
                     </div>
                     <button
@@ -150,17 +182,46 @@ export default function FilerDetail() {
 
             {/* 銘柄一覧 */}
             <section>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                     <div className="flex items-center gap-2">
                         <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <h2 className="text-lg font-semibold text-gray-900">保有銘柄一覧</h2>
+                        <span className="text-sm text-gray-500">({sortedIssuers.length}銘柄)</span>
                     </div>
-                    <span className="text-sm text-gray-500">全 {filteredIssuers.length} 銘柄</span>
+
+                    {/* ソートコントロール */}
+                    <div className="flex items-center gap-2">
+                        <select
+                            value={sortKey}
+                            onChange={(e) => setSortKey(e.target.value as "date" | "ratio" | "name" | "change")}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                        >
+                            <option value="date">⛲ 更新日</option>
+                            <option value="ratio">📊 保有比率</option>
+                            <option value="change">📈 増減</option>
+                            <option value="name">🎯 銘柄名</option>
+                        </select>
+                        <button
+                            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                            className="p-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors"
+                            title={sortOrder === "asc" ? "昇順" : "降順"}
+                        >
+                            {sortOrder === "desc" ? (
+                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                </svg>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
-                {filteredIssuers.length === 0 ? (
+                {sortedIssuers.length === 0 ? (
                     <div className="bg-gray-50 border border-gray-200 rounded-xl p-12 text-center">
                         <p className="text-gray-500">
                             {searchQuery ? "検索結果がありません" : "保有銘柄データがありません"}
@@ -168,7 +229,7 @@ export default function FilerDetail() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                        {filteredIssuers.map((issuer) => (
+                        {sortedIssuers.map((issuer) => (
                             <Link
                                 key={issuer.id}
                                 href={`/filer/${filerId}/issuer/${issuer.id}`}
