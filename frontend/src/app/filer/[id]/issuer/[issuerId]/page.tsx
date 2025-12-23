@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
@@ -41,13 +41,7 @@ export default function IssuerHistory() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (filerId && issuerId) {
-            fetchHistory();
-        }
-    }, [filerId, issuerId]);
-
-    const fetchHistory = async () => {
+    const fetchHistory = useCallback(async () => {
         try {
             const response = await fetch(
                 `http://localhost:8000/api/filers/${filerId}/issuers/${issuerId}/history`
@@ -60,7 +54,13 @@ export default function IssuerHistory() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filerId, issuerId]);
+
+    useEffect(() => {
+        if (filerId && issuerId) {
+            fetchHistory();
+        }
+    }, [filerId, issuerId, fetchHistory]);
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return "-";
@@ -92,7 +92,7 @@ export default function IssuerHistory() {
 
     if (loading) {
         return (
-            <div className="max-w-7xl mx-auto px-6">
+            <div className="max-w-7xl mx-auto">
                 <div className="flex items-center justify-center min-h-[400px]">
                     <div className="flex flex-col items-center gap-4">
                         <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
@@ -105,7 +105,7 @@ export default function IssuerHistory() {
 
     if (error || !data) {
         return (
-            <div className="max-w-7xl mx-auto px-6">
+            <div className="max-w-7xl mx-auto">
                 <div className="bg-red-900/20 border border-red-500/50 rounded-xl p-6 text-center">
                     <p className="text-red-400">{error || "データが見つかりません"}</p>
                     <Link
@@ -120,10 +120,10 @@ export default function IssuerHistory() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto">
             {/* パンくずリスト */}
-            <nav className="mb-6 animate-fade-in">
-                <ol className="flex items-center gap-2 text-sm flex-wrap">
+            <nav className="mb-4 sm:mb-6 animate-fade-in overflow-x-auto">
+                <ol className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm whitespace-nowrap">
                     <li>
                         <Link href="/" className="text-zinc-400 hover:text-white transition-colors">
                             ホーム
@@ -131,38 +131,38 @@ export default function IssuerHistory() {
                     </li>
                     <li className="text-zinc-600">/</li>
                     <li>
-                        <Link href={`/filer/${filerId}`} className="text-zinc-400 hover:text-white transition-colors">
+                        <Link href={`/filer/${filerId}`} className="text-zinc-400 hover:text-white transition-colors truncate max-w-[100px] sm:max-w-none inline-block align-bottom">
                             {data.filer.name}
                         </Link>
                     </li>
                     <li className="text-zinc-600">/</li>
-                    <li className="text-white">{data.issuer.name || data.issuer.edinet_code}</li>
+                    <li className="text-white truncate max-w-[100px] sm:max-w-none">{data.issuer.name || data.issuer.edinet_code}</li>
                 </ol>
             </nav>
 
             {/* 銘柄情報ヘッダー */}
-            <section className="mb-8 animate-fade-in">
-                <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-2xl p-8">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-6">
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-2xl">
+            <section className="mb-6 sm:mb-8 animate-fade-in">
+                <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl sm:rounded-2xl p-4 sm:p-8">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div className="flex items-start gap-3 sm:gap-6">
+                            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-lg sm:text-2xl shrink-0">
                                 {(data.issuer.name || data.issuer.edinet_code).charAt(0)}
                             </div>
-                            <div>
-                                <h1 className="text-2xl font-bold text-white mb-1">
+                            <div className="min-w-0 flex-1">
+                                <h1 className="text-lg sm:text-2xl font-bold text-white mb-0.5 sm:mb-1 truncate">
                                     {data.issuer.name || data.issuer.edinet_code}
                                 </h1>
                                 {data.issuer.sec_code && (
-                                    <p className="text-zinc-400 text-sm">証券コード: {data.issuer.sec_code}</p>
+                                    <p className="text-zinc-400 text-xs sm:text-sm">証券コード: {data.issuer.sec_code}</p>
                                 )}
-                                <p className="text-zinc-500 mt-2">
+                                <p className="text-zinc-500 mt-1 sm:mt-2 text-xs sm:text-base truncate">
                                     提出者: <span className="text-zinc-300">{data.filer.name}</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="text-right">
-                            <p className="text-4xl font-bold text-indigo-400">{data.history.length}</p>
-                            <p className="text-sm text-zinc-500">報告書数</p>
+                        <div className="text-left sm:text-right pl-15 sm:pl-0">
+                            <p className="text-2xl sm:text-4xl font-bold text-indigo-400">{data.history.length}</p>
+                            <p className="text-xs sm:text-sm text-zinc-500">報告書数</p>
                         </div>
                     </div>
                 </div>
@@ -170,47 +170,49 @@ export default function IssuerHistory() {
 
             {/* 履歴タイムライン */}
             <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
-                <h2 className="text-xl font-bold text-white mb-6">報告書履歴</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6">報告書履歴</h2>
 
                 {data.history.length === 0 ? (
-                    <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-2xl p-12 text-center">
+                    <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl sm:rounded-2xl p-8 sm:p-12 text-center">
                         <p className="text-zinc-400">履歴データがありません</p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                         {data.history.map((item, index) => (
                             <div
                                 key={item.doc_id}
-                                className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-6 hover:border-indigo-500/50 transition-all"
+                                className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 sm:p-6 hover:border-indigo-500/50 transition-all"
                                 style={{ animationDelay: `${index * 0.05}s` }}
                             >
-                                <div className="flex items-start justify-between">
+                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
                                     <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <span className={`px-2 py-1 text-xs rounded-full ${getDocTypeColor(item.doc_description)}`}>
+                                        <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
+                                            <span className={`px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-full ${getDocTypeColor(item.doc_description)}`}>
                                                 {item.doc_description || "報告書"}
                                             </span>
-                                            <span className="text-sm text-zinc-500">
+                                            <span className="text-xs sm:text-sm text-zinc-500">
                                                 {formatDate(item.submit_date)}
                                             </span>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-4 mt-4">
+                                        <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-3 sm:mt-4">
                                             <div>
-                                                <p className="text-xs text-zinc-500 mb-1">保有株数</p>
-                                                <p className="text-lg font-semibold text-white">
-                                                    {item.shares_held !== null ? formatNumber(item.shares_held) + " 株" : "未取得"}
+                                                <p className="text-[10px] sm:text-xs text-zinc-500 mb-0.5 sm:mb-1">保有株数</p>
+                                                <p className="text-sm sm:text-lg font-semibold text-white">
+                                                    {item.shares_held !== null ? (
+                                                        <><span className="hidden sm:inline">{formatNumber(item.shares_held)}</span><span className="sm:hidden">{(item.shares_held / 1000).toFixed(0)}K</span> 株</>
+                                                    ) : "未取得"}
                                                 </p>
                                             </div>
                                             <div>
-                                                <p className="text-xs text-zinc-500 mb-1">保有比率</p>
-                                                <p className="text-lg font-semibold text-indigo-400">
+                                                <p className="text-[10px] sm:text-xs text-zinc-500 mb-0.5 sm:mb-1">保有比率</p>
+                                                <p className="text-sm sm:text-lg font-semibold text-indigo-400">
                                                     {item.holding_ratio !== null ? formatRatio(item.holding_ratio) : "未取得"}
                                                 </p>
                                             </div>
                                             <div>
-                                                <p className="text-xs text-zinc-500 mb-1">増減</p>
-                                                <p className={`text-lg font-semibold ${item.ratio_change === null ? "text-zinc-400" :
+                                                <p className="text-[10px] sm:text-xs text-zinc-500 mb-0.5 sm:mb-1">増減</p>
+                                                <p className={`text-sm sm:text-lg font-semibold ${item.ratio_change === null ? "text-zinc-400" :
                                                     item.ratio_change > 0 ? "text-emerald-400" :
                                                         item.ratio_change < 0 ? "text-red-400" : "text-zinc-400"
                                                     }`}>
