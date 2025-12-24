@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "./components/Sidebar";
+import { ClientLayout } from "./components/ClientLayout";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -21,17 +21,7 @@ export default function RootLayout({
   return (
     <html lang="ja" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`} suppressHydrationWarning>
-        <div className="min-h-screen bg-white flex">
-          {/* サイドバー（レスポンシブ対応） */}
-          <Sidebar />
-
-          {/* メインコンテンツ */}
-          <main className="flex-1 lg:ml-64 w-full">
-            <div className="p-4 sm:p-6 lg:p-8">
-              {children}
-            </div>
-          </main>
-        </div>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
