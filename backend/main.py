@@ -34,24 +34,36 @@ def root():
 
 # === Filers (提出者) ===
 
-@app.get("/api/filers", response_model=List[schemas.FilerResponse])
-def get_filers(db: Session = Depends(get_db)):
-    """提出者一覧を取得"""
-    filers = crud.get_filers(db)
+@app.get("/api/filers")
+def get_filers(
+    skip: int = 0,
+    limit: int = 50,
+    search: str = None,
+    db: Session = Depends(get_db)
+):
+    """提出者一覧を取得（ページネーション対応）"""
+    data = crud.get_filers(db, skip=skip, limit=limit, search=search)
+    
     result = []
-    for filer in filers:
-        stats = crud.get_filer_stats(db, filer.id)
+    for item in data["items"]:
+        filer = item["filer"]
         result.append(schemas.FilerResponse(
             id=filer.id,
             edinet_code=filer.primary_edinet_code,
             name=filer.name,
             sec_code=filer.sec_code,
             created_at=filer.created_at,
-            filing_count=stats["filing_count"],
-            issuer_count=stats["issuer_count"],
-            latest_filing_date=stats["latest_filing_date"]
+            filing_count=item["filing_count"],
+            issuer_count=item["issuer_count"],
+            latest_filing_date=item["latest_filing_date"]
         ))
-    return result
+    
+    return {
+        "items": result,
+        "total": data["total"],
+        "skip": data["skip"],
+        "limit": data["limit"]
+    }
 
 
 @app.get("/api/filers/{filer_id}", response_model=schemas.FilerResponse)
@@ -96,16 +108,23 @@ def create_filer(filer: schemas.FilerCreate, db: Session = Depends(get_db)):
 
 # === Issuers (発行体/銘柄) ===
 
-@app.get("/api/filers/{filer_id}/issuers", response_model=List[schemas.IssuerResponse])
-def get_issuers_by_filer(filer_id: int, db: Session = Depends(get_db)):
-    """提出者が保有している銘柄一覧を取得"""
+@app.get("/api/filers/{filer_id}/issuers")
+def get_issuers_by_filer(
+    filer_id: int,
+    skip: int = 0,
+    limit: int = 50,
+    search: str = None,
+    db: Session = Depends(get_db)
+):
+    """提出者が保有している銘柄一覧を取得（ページネーション対応）"""
     filer = crud.get_filer_by_id(db, filer_id)
     if not filer:
         raise HTTPException(status_code=404, detail="Filer not found")
     
-    issuer_data = crud.get_issuers_by_filer(db, filer_id)
+    data = crud.get_issuers_by_filer(db, filer_id, skip=skip, limit=limit, search=search)
+    
     result = []
-    for item in issuer_data:
+    for item in data["items"]:
         issuer = item["issuer"]
         result.append(schemas.IssuerResponse(
             id=issuer.id,
@@ -117,7 +136,13 @@ def get_issuers_by_filer(filer_id: int, db: Session = Depends(get_db)):
             ratio_change=item.get("ratio_change"),
             filing_count=item["filing_count"]
         ))
-    return result
+    
+    return {
+        "items": result,
+        "total": data["total"],
+        "skip": data["skip"],
+        "limit": data["limit"]
+    }
 
 
 # === Filings (報告書) ===

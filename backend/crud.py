@@ -4,9 +4,64 @@ from typing import List, Optional
 from backend.models import Filer, FilerCode, Issuer, Filing, HoldingDetail
 
 
-def get_filers(db: Session) -> List[Filer]:
-    """すべての提出者を取得"""
-    return db.query(Filer).all()
+def get_filers(db: Session, skip: int = 0, limit: int = 50, search: str = None) -> dict:
+    """提出者をページネーション付きで取得（統計情報も含む）"""
+    # ベースクエリ
+    query = db.query(Filer)
+    
+    # 検索フィルタ
+    if search:
+        query = query.filter(Filer.name.ilike(f"%{search}%"))
+    
+    # 総数を取得
+    total = query.count()
+    
+    # 統計情報をサブクエリで一括取得
+    from sqlalchemy import func, desc
+    from sqlalchemy.orm import aliased
+    
+    # Filing統計をサブクエリ化
+    filing_stats = (
+        db.query(
+            Filing.filer_id,
+            func.count(Filing.id).label("filing_count"),
+            func.count(func.distinct(Filing.issuer_id)).label("issuer_count"),
+            func.max(Filing.submit_date).label("latest_filing_date")
+        )
+        .group_by(Filing.filer_id)
+        .subquery()
+    )
+    
+    # メインクエリ（統計情報をJOIN）
+    results = (
+        query
+        .outerjoin(filing_stats, Filer.id == filing_stats.c.filer_id)
+        .add_columns(
+            filing_stats.c.filing_count,
+            filing_stats.c.issuer_count,
+            filing_stats.c.latest_filing_date
+        )
+        .order_by(desc(filing_stats.c.latest_filing_date))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    
+    filers = []
+    for filer, filing_count, issuer_count, latest_filing_date in results:
+        filers.append({
+            "filer": filer,
+            "filing_count": filing_count or 0,
+            "issuer_count": issuer_count or 0,
+            "latest_filing_date": latest_filing_date
+        })
+    
+    return {
+        "items": filers,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
 
 
 def get_filer_by_id(db: Session, filer_id: int) -> Optional[Filer]:
@@ -33,8 +88,8 @@ def create_filer(db: Session, edinet_code: str, name: str, sec_code: str = None)
     return filer
 
 
-def get_issuers_by_filer(db: Session, filer_id: int) -> List[dict]:
-    """提出者が保有している発行体（銘柄）一覧を取得"""
+def get_issuers_by_filer(db: Session, filer_id: int, skip: int = 0, limit: int = 50, search: str = None) -> dict:
+    """提出者が保有している発行体（銘柄）一覧をページネーション付きで取得"""
     # 各発行体について、最新の報告書情報を取得
     subquery = (
         db.query(
@@ -48,58 +103,85 @@ def get_issuers_by_filer(db: Session, filer_id: int) -> List[dict]:
         .subquery()
     )
     
-    results = (
+    # ベースクエリ
+    base_query = (
         db.query(Issuer, subquery.c.latest_date, subquery.c.filing_count)
         .join(subquery, Issuer.id == subquery.c.issuer_id)
+    )
+    
+    # 検索フィルタ
+    if search:
+        base_query = base_query.filter(
+            (Issuer.name.ilike(f"%{search}%")) | 
+            (Issuer.sec_code.ilike(f"%{search}%")) |
+            (Issuer.edinet_code.ilike(f"%{search}%"))
+        )
+    
+    # 総数を取得
+    total = base_query.count()
+    
+    # ページネーション適用
+    results = (
+        base_query
         .order_by(desc(subquery.c.latest_date))
+        .offset(skip)
+        .limit(limit)
         .all()
     )
     
-    # 各銘柄の最新保有比率と増減比を取得
-    issuer_data = []
-    for issuer, latest_date, filing_count in results:
-        # この銘柄の最新2件のFilingを取得
-        latest_filings = (
-            db.query(Filing)
+    # 各銘柄の最新保有比率と増減比を取得（バッチ処理）
+    issuer_ids = [issuer.id for issuer, _, _ in results]
+    
+    # 最新2件のFilingをサブクエリで取得
+    if issuer_ids:
+        # 各issuerの最新のHoldingDetailを取得
+        from sqlalchemy import and_
+        
+        # 最新のFiling IDを取得するサブクエリ
+        latest_filing_subq = (
+            db.query(
+                Filing.issuer_id,
+                func.max(Filing.id).label("latest_filing_id")
+            )
             .filter(Filing.filer_id == filer_id)
-            .filter(Filing.issuer_id == issuer.id)
-            .order_by(desc(Filing.submit_date))
-            .limit(2)
+            .filter(Filing.issuer_id.in_(issuer_ids))
+            .group_by(Filing.issuer_id)
+            .subquery()
+        )
+        
+        # 最新のHoldingDetailを取得
+        latest_holdings = (
+            db.query(
+                latest_filing_subq.c.issuer_id,
+                HoldingDetail.holding_ratio
+            )
+            .join(HoldingDetail, HoldingDetail.filing_id == latest_filing_subq.c.latest_filing_id)
             .all()
         )
         
-        latest_ratio = None
-        ratio_change = None
-        
-        if latest_filings:
-            # 最新の報告書のHoldingDetailを取得
-            latest_holding = (
-                db.query(HoldingDetail)
-                .filter(HoldingDetail.filing_id == latest_filings[0].id)
-                .first()
-            )
-            if latest_holding and latest_holding.holding_ratio is not None:
-                latest_ratio = latest_holding.holding_ratio
-                
-                # 2件目がある場合は増減比を計算
-                if len(latest_filings) > 1:
-                    prev_holding = (
-                        db.query(HoldingDetail)
-                        .filter(HoldingDetail.filing_id == latest_filings[1].id)
-                        .first()
-                    )
-                    if prev_holding and prev_holding.holding_ratio is not None:
-                        ratio_change = latest_ratio - prev_holding.holding_ratio
+        holdings_map = {issuer_id: ratio for issuer_id, ratio in latest_holdings}
+    else:
+        holdings_map = {}
+    
+    # 結果を構築
+    issuer_data = []
+    for issuer, latest_date, filing_count in results:
+        latest_ratio = holdings_map.get(issuer.id)
         
         issuer_data.append({
             "issuer": issuer,
             "latest_filing_date": latest_date,
             "filing_count": filing_count,
             "latest_ratio": latest_ratio,
-            "ratio_change": ratio_change
+            "ratio_change": None  # 簡略化のため増減は省略（詳細ページで表示）
         })
     
-    return issuer_data
+    return {
+        "items": issuer_data,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
 
 
 def get_issuer_by_id(db: Session, issuer_id: int) -> Optional[Issuer]:
