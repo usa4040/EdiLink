@@ -24,6 +24,15 @@ interface Issuer {
     ratio_change?: number | null;
 }
 
+interface PaginatedResponse {
+    items: Issuer[];
+    total: number;
+    skip: number;
+    limit: number;
+}
+
+const ITEMS_PER_PAGE = 50;
+
 export default function FilerDetail() {
     const params = useParams();
     const filerId = params.id as string;
@@ -31,25 +40,30 @@ export default function FilerDetail() {
     const [filer, setFiler] = useState<Filer | null>(null);
     const [issuers, setIssuers] = useState<Issuer[]>([]);
     const [loading, setLoading] = useState(true);
+    const [issuersLoading, setIssuersLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
-    const [sortKey, setSortKey] = useState<"date" | "ratio" | "name" | "change">("date");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [sortKey, setSortKey] = useState<"date" | "ratio" | "name">("date");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-    const fetchData = useCallback(async () => {
+    // デバウンス処理
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+            setCurrentPage(1);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const fetchFiler = useCallback(async () => {
         try {
-            const [filerRes, issuersRes] = await Promise.all([
-                fetch(`http://localhost:8000/api/filers/${filerId}`),
-                fetch(`http://localhost:8000/api/filers/${filerId}/issuers`),
-            ]);
-
-            if (!filerRes.ok) throw new Error("提出者が見つかりません");
-
-            const filerData = await filerRes.json();
-            const issuersData = await issuersRes.json();
-
-            setFiler(filerData);
-            setIssuers(issuersData);
+            const response = await fetch(`http://localhost:8000/api/filers/${filerId}`);
+            if (!response.ok) throw new Error("提出者が見つかりません");
+            const data = await response.json();
+            setFiler(data);
         } catch (err) {
             setError(err instanceof Error ? err.message : "エラーが発生しました");
         } finally {
@@ -57,11 +71,41 @@ export default function FilerDetail() {
         }
     }, [filerId]);
 
+    const fetchIssuers = useCallback(async () => {
+        setIssuersLoading(true);
+        try {
+            const skip = (currentPage - 1) * ITEMS_PER_PAGE;
+            const params = new URLSearchParams({
+                skip: skip.toString(),
+                limit: ITEMS_PER_PAGE.toString(),
+            });
+            if (debouncedSearch) {
+                params.append("search", debouncedSearch);
+            }
+
+            const response = await fetch(`http://localhost:8000/api/filers/${filerId}/issuers?${params}`);
+            if (!response.ok) throw new Error("銘柄データの取得に失敗しました");
+            const data: PaginatedResponse = await response.json();
+            setIssuers(data.items);
+            setTotalCount(data.total);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIssuersLoading(false);
+        }
+    }, [filerId, currentPage, debouncedSearch]);
+
     useEffect(() => {
         if (filerId) {
-            fetchData();
+            fetchFiler();
         }
-    }, [filerId, fetchData]);
+    }, [filerId, fetchFiler]);
+
+    useEffect(() => {
+        if (filerId) {
+            fetchIssuers();
+        }
+    }, [filerId, fetchIssuers]);
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return "-";
@@ -78,13 +122,8 @@ export default function FilerDetail() {
         return `${ratio.toFixed(2)}%`;
     };
 
-    const filteredIssuers = issuers.filter(issuer =>
-        (issuer.name || issuer.edinet_code).toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (issuer.sec_code || "").includes(searchQuery)
-    );
-
-    // ソート処理
-    const sortedIssuers = [...filteredIssuers].sort((a, b) => {
+    // クライアントサイドソート
+    const sortedIssuers = [...issuers].sort((a, b) => {
         let comparison = 0;
 
         switch (sortKey) {
@@ -98,11 +137,6 @@ export default function FilerDetail() {
                 const ratioB = b.latest_ratio ?? -1;
                 comparison = ratioA - ratioB;
                 break;
-            case "change":
-                const changeA = a.ratio_change ?? -999;
-                const changeB = b.ratio_change ?? -999;
-                comparison = changeA - changeB;
-                break;
             case "name":
                 const nameA = a.name || a.edinet_code;
                 const nameB = b.name || b.edinet_code;
@@ -112,6 +146,8 @@ export default function FilerDetail() {
 
         return sortOrder === "asc" ? comparison : -comparison;
     });
+
+    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
     if (loading) {
         return (
@@ -167,10 +203,7 @@ export default function FilerDetail() {
                         />
                     </div>
                     <button
-                        onClick={() => {
-                            setLoading(true);
-                            fetchData();
-                        }}
+                        onClick={fetchIssuers}
                         className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,19 +221,20 @@ export default function FilerDetail() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <h2 className="text-lg font-semibold text-gray-900">保有銘柄一覧</h2>
-                        <span className="text-sm text-gray-500">({sortedIssuers.length}銘柄)</span>
+                        <span className="text-sm text-gray-500">
+                            (全{totalCount.toLocaleString()}銘柄中 {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}件)
+                        </span>
                     </div>
 
                     {/* ソートコントロール */}
                     <div className="flex items-center gap-2">
                         <select
                             value={sortKey}
-                            onChange={(e) => setSortKey(e.target.value as "date" | "ratio" | "name" | "change")}
+                            onChange={(e) => setSortKey(e.target.value as "date" | "ratio" | "name")}
                             className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                         >
                             <option value="date">⛲ 更新日</option>
                             <option value="ratio">📊 保有比率</option>
-                            <option value="change">📈 増減</option>
                             <option value="name">🎯 銘柄名</option>
                         </select>
                         <button
@@ -221,67 +255,108 @@ export default function FilerDetail() {
                     </div>
                 </div>
 
-                {sortedIssuers.length === 0 ? (
+                {issuersLoading ? (
+                    <div className="flex items-center justify-center min-h-[300px]">
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-gray-500">読み込み中...</p>
+                        </div>
+                    </div>
+                ) : sortedIssuers.length === 0 ? (
                     <div className="bg-gray-50 border border-gray-200 rounded-xl p-12 text-center">
                         <p className="text-gray-500">
                             {searchQuery ? "検索結果がありません" : "保有銘柄データがありません"}
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                        {sortedIssuers.map((issuer) => (
-                            <Link
-                                key={issuer.id}
-                                href={`/filer/${filerId}/issuer/${issuer.id}`}
-                                className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 hover:border-indigo-300 hover:shadow-md transition-all active:scale-[0.98]"
-                            >
-                                {/* ヘッダー */}
-                                <div className="flex items-start justify-between mb-2 sm:mb-3">
-                                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                                        {issuer.filing_count === 1 && (
-                                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-emerald-100 text-emerald-600 text-[10px] sm:text-xs font-bold rounded">
-                                                New!
-                                            </span>
-                                        )}
-                                        {issuer.sec_code && (
-                                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-indigo-100 text-indigo-600 text-[10px] sm:text-xs font-medium rounded">
-                                                {issuer.sec_code.slice(0, 4)}
-                                            </span>
-                                        )}
-                                        <span className="text-[10px] sm:text-xs text-gray-400">{formatDate(issuer.latest_filing_date)}</span>
+                    <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                            {sortedIssuers.map((issuer) => (
+                                <Link
+                                    key={issuer.id}
+                                    href={`/filer/${filerId}/issuer/${issuer.id}`}
+                                    className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 hover:border-indigo-300 hover:shadow-md transition-all active:scale-[0.98]"
+                                >
+                                    {/* ヘッダー */}
+                                    <div className="flex items-start justify-between mb-2 sm:mb-3">
+                                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                            {issuer.filing_count === 1 && (
+                                                <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-emerald-100 text-emerald-600 text-[10px] sm:text-xs font-bold rounded">
+                                                    New!
+                                                </span>
+                                            )}
+                                            {issuer.sec_code && (
+                                                <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-indigo-100 text-indigo-600 text-[10px] sm:text-xs font-medium rounded">
+                                                    {issuer.sec_code.slice(0, 4)}
+                                                </span>
+                                            )}
+                                            <span className="text-[10px] sm:text-xs text-gray-400">{formatDate(issuer.latest_filing_date)}</span>
+                                        </div>
+                                        <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
                                     </div>
-                                    <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </div>
 
-                                {/* 銘柄名 */}
-                                <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 line-clamp-2 text-sm sm:text-base">{issuer.name || issuer.edinet_code}</h3>
+                                    {/* 銘柄名 */}
+                                    <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 line-clamp-2 text-sm sm:text-base">{issuer.name || issuer.edinet_code}</h3>
 
-                                {/* 保有比率 */}
-                                <div className="flex items-end justify-between">
-                                    <div>
-                                        <p className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">保有比率</p>
-                                        <p className="text-xl sm:text-2xl font-bold text-gray-900">{formatRatio(issuer.latest_ratio)}</p>
+                                    {/* 保有比率 */}
+                                    <div className="flex items-end justify-between">
+                                        <div>
+                                            <p className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">保有比率</p>
+                                            <p className="text-xl sm:text-2xl font-bold text-gray-900">{formatRatio(issuer.latest_ratio)}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">報告数</p>
+                                            <p className="text-base sm:text-lg font-semibold text-gray-600">{issuer.filing_count}件</p>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">増減</p>
-                                        {issuer.ratio_change !== null && issuer.ratio_change !== undefined ? (
-                                            <p className={`text-base sm:text-lg font-semibold ${issuer.ratio_change > 0 ? "text-emerald-500" :
-                                                issuer.ratio_change < 0 ? "text-red-500" : "text-gray-400"
-                                                }`}>
-                                                {issuer.ratio_change > 0 ? "+" : ""}{formatRatio(issuer.ratio_change)}
-                                            </p>
-                                        ) : (
-                                            <p className="text-base sm:text-lg text-gray-400">-</p>
-                                        )}
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
+                                </Link>
+                            ))}
+                        </div>
+
+                        {/* ページネーション */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-center gap-2 mt-6">
+                                <button
+                                    onClick={() => setCurrentPage(1)}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    «
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    前へ
+                                </button>
+
+                                <span className="px-4 py-2 text-sm text-gray-700">
+                                    {currentPage} / {totalPages}
+                                </span>
+
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    次へ
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage(totalPages)}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    »
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
             </section>
         </div>
     );
 }
+
