@@ -83,6 +83,7 @@ def sync_documents(
     new_filings = 0
     new_filers = 0
     new_issuers = 0
+    processed_doc_ids = set()  # セッション内での重複を追跡
     
     with get_db_session() as db:
         for d in tqdm(date_list, desc="Fetching documents"):
@@ -99,7 +100,7 @@ def sync_documents(
                     import json
                     with open(cache_file, 'w', encoding='utf-8') as f:
                         json.dump(data, f, ensure_ascii=False, indent=2)
-                time.sleep(0.1)  # API制限対策
+                time.sleep(1)  # API制限対策（1秒間隔）
             
             if not data or "results" not in data:
                 continue
@@ -118,10 +119,16 @@ def sync_documents(
                 if not doc_id:
                     continue
                 
-                # 既存チェック
+                # 既存チェック（DB + セッション内重複）
+                if doc_id in processed_doc_ids:
+                    continue
                 existing = db.query(Filing).filter(Filing.doc_id == doc_id).first()
                 if existing:
+                    processed_doc_ids.add(doc_id)
                     continue
+                
+                # 処理開始時にセットに追加
+                processed_doc_ids.add(doc_id)
                 
                 # 1. 提出者（Filer）の登録/取得
                 # EDINETコードからFilerCodeを検索
@@ -132,6 +139,7 @@ def sync_documents(
                 else:
                     # 新規Filerを作成
                     filer = Filer(
+                        edinet_code=edinet_code,  # DBスキーマ必須フィールド
                         name=doc.get("filerName", ""),
                         sec_code=str(doc.get("secCode", "")) if doc.get("secCode") else None,
                         jcn=str(doc.get("JCN", "")) if doc.get("JCN") else None
@@ -353,15 +361,17 @@ def extract_holding_data_from_csv(csv_content: bytes) -> dict:
     return result
 
 
-def sync_holding_details(filer_edinet_code: str = None, limit: int = None):
+def sync_holding_details(filer_edinet_code: str = None, limit: int = None, year: int = None):
     """
     報告書からCSVをダウンロードして保有詳細を取得・保存
     
     Args:
         filer_edinet_code: 特定の提出者に絞る場合のEDINETコード
         limit: 処理する報告書の最大数（テスト用）
+        year: 特定の年に絞る場合の年（例: 2025）
     """
     from backend.models import HoldingDetail
+    from sqlalchemy import extract
     
     if not API_KEY:
         print("Error: API_KEY not found in .env file.")
@@ -379,6 +389,11 @@ def sync_holding_details(filer_edinet_code: str = None, limit: int = None):
             filer_code = db.query(FilerCode).filter(FilerCode.edinet_code == filer_edinet_code).first()
             if filer_code:
                 query = query.filter(Filing.filer_id == filer_code.filer_id)
+        
+        # 年フィルタ
+        if year:
+            query = query.filter(extract('year', Filing.submit_date) == year)
+            print(f"Filtering by year: {year}")
         
         filings = query.order_by(Filing.submit_date.desc()).all()
         
@@ -413,7 +428,7 @@ def sync_holding_details(filer_edinet_code: str = None, limit: int = None):
             else:
                 error_count += 1
             
-            time.sleep(0.5)  # API制限対策
+            time.sleep(0.5)  # API制限対策（0.5秒間隔）
         
         db.commit()
         
@@ -430,13 +445,14 @@ def main():
     parser.add_argument("--update-names", action="store_true", help="銘柄名の更新のみ実行")
     parser.add_argument("--sync-holdings", action="store_true", help="保有詳細データを取得")
     parser.add_argument("--limit", type=int, default=None, help="処理する報告書の最大数（テスト用）")
+    parser.add_argument("--year", type=int, default=None, help="特定の年に絞る（例: 2025）")
     
     args = parser.parse_args()
     
     if args.update_names:
         sync_issuer_names()
     elif args.sync_holdings:
-        sync_holding_details(filer_edinet_code=args.filer, limit=args.limit)
+        sync_holding_details(filer_edinet_code=args.filer, limit=args.limit, year=args.year)
     else:
         sync_documents(
             filer_edinet_code=args.filer,

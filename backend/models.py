@@ -10,6 +10,7 @@ class Filer(Base):
     __tablename__ = "filers"
     
     id = Column(Integer, primary_key=True, index=True)
+    edinet_code = Column(String, nullable=False, index=True)  # 代表的なEDINETコード（DBスキーマ互換）
     name = Column(String, nullable=False)  # 株式会社光通信
     sec_code = Column(String, nullable=True)  # 94350（代表的な証券コード）
     jcn = Column(String, nullable=True)  # 法人番号
