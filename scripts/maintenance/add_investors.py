@@ -1,7 +1,8 @@
-"""
-機関投資家を一括登録するスクリプト
-"""
+import os
 import sqlite3
+
+# プロジェクトルートを取得
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 追加したい機関投資家（EDINETコード, 名前）
 INVESTORS = [
@@ -14,7 +15,8 @@ INVESTORS = [
 ]
 
 def main():
-    conn = sqlite3.connect('data/edinet.db')
+    db_path = os.path.join(PROJECT_ROOT, 'data', 'edinet.db')
+    conn = sqlite3.connect(db_path)
     cur = conn.cursor()
     added = []
 

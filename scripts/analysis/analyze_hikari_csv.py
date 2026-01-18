@@ -7,7 +7,9 @@
 import pandas as pd
 import os
 
-csv_path = 'hikari_filings_list.csv'
+# プロジェクトルートを取得して、exportsディレクトリ内のCSVを参照
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+csv_path = os.path.join(project_root, 'exports', 'hikari_filings_list.csv')
 
 if not os.path.exists(csv_path):
     print(f"File not found: {csv_path}")

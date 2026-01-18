@@ -11,7 +11,8 @@ import argparse
 from datetime import datetime
 
 # パス設定
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, project_root)
 
 from backend.models import FilerCode, Filing, get_engine
 from backend.database import get_db_session
@@ -19,7 +20,7 @@ from backend.database import get_db_session
 def export_filer_csv(edinet_code, output_file=None):
     if not output_file:
         # デフォルトの出力先を exports/ ディレクトリに設定
-        output_file = os.path.join("exports", f"{edinet_code}_filings.csv")
+        output_file = os.path.join(project_root, "exports", f"{edinet_code}_filings.csv")
 
     with get_db_session() as db:
         # Filer特定
