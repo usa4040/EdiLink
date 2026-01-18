@@ -11,7 +11,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # パス設定
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, project_root)
 
 from backend.models import FilerCode, Filing, Issuer, get_engine
 from backend.database import get_db_session

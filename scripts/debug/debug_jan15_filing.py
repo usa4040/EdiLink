@@ -11,7 +11,8 @@ import sys
 from dotenv import load_dotenv
 
 # .env読み込み
-load_dotenv()
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+load_dotenv(os.path.join(project_root, ".env"))
 API_KEY = os.getenv("API_KEY")
 EDINET_API_BASE = "https://disclosure.edinet-fsa.go.jp/api/v2"
 
