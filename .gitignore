@@ -21,6 +21,8 @@ yarn-error.log*
 data/*.db
 hikari_filings_list.csv
 EdinetcodeDlInfo.csv
+hikari_*.csv
+*_filings.csv
 
 # Cache
 cache/
