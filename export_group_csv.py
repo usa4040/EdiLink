@@ -18,7 +18,8 @@ from backend.database import get_db_session
 
 def export_filer_group_csv(edinet_code, output_file=None):
     if not output_file:
-        output_file = f"{edinet_code}_group_filings.csv"
+        # デフォルトの出力先を exports/ ディレクトリに設定
+        output_file = os.path.join("exports", f"{edinet_code}_group_filings.csv")
 
     with get_db_session() as db:
         # Filer特定 (E04948から親IDを特定)
@@ -40,6 +41,11 @@ def export_filer_group_csv(edinet_code, output_file=None):
         if not filings:
             print("No filings found.")
             return
+
+        # ディレクトリの作成を保証
+        output_dir = os.path.dirname(output_file)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
         # CSV書き出し
         with open(output_file, 'w', newline='', encoding='utf-8-sig') as f:
