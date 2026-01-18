@@ -77,7 +77,7 @@ def get_filer_by_edinet_code(db: Session, edinet_code: str) -> Optional[Filer]:
 
 def create_filer(db: Session, edinet_code: str, name: str, sec_code: str = None) -> Filer:
     """新しい提出者を作成（FilerCodeも同時に作成）"""
-    filer = Filer(name=name, sec_code=sec_code)
+    filer = Filer(edinet_code=edinet_code, name=name, sec_code=sec_code)
     db.add(filer)
     db.flush()
     

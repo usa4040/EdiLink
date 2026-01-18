@@ -53,7 +53,7 @@ def client(db):
 @pytest.fixture
 def sample_data(db):
     """基本的なサンプルデータを作成"""
-    filer = Filer(name="テスト提出者", sec_code="90000")
+    filer = Filer(edinet_code="E00000", name="テスト提出者", sec_code="90000")
     db.add(filer)
     db.flush()
     

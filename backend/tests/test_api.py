@@ -8,7 +8,7 @@ def test_get_filers(client, sample_data):
     """提出者一覧が正しく取得できるか"""
     response = client.get("/api/filers")
     assert response.status_code == 200
-    data = response.json()
+    data = response.json()["items"]
     assert len(data) == 1
     assert data[0]["name"] == "テスト提出者"
     assert data[0]["edinet_code"] == "E00000"

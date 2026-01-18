@@ -97,8 +97,15 @@ class HoldingDetail(Base):
     filing = relationship("Filing", back_populates="holding_details")
 
 
+import os
+
 # データベース接続用のエンジン作成関数
 def get_engine(db_path: str = "data/edinet.db"):
+    # ディレクトリが存在しない場合は作成
+    db_dir = os.path.dirname(db_path)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+        
     return create_engine(f"sqlite:///{db_path}", echo=False)
 
 

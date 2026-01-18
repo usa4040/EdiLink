@@ -16,7 +16,8 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const saved = localStorage.getItem("sidebarCollapsed");
         if (saved === "true") {
-            setIsCollapsed(true);
+            // Hydration mismatchを防ぐため初期値はfalseにし、マウント後に非同期で更新
+            setTimeout(() => setIsCollapsed(true), 0);
         }
     }, []);
 
