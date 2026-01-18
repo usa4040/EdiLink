@@ -24,7 +24,7 @@ data/*.db
 # Cache
 cache/
 temp_csv/
-*.json
+
 
 # IDE
 .vscode/
