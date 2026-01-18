@@ -19,10 +19,7 @@ yarn-error.log*
 
 # Database & Data
 data/*.db
-hikari_filings_list.csv
-EdinetcodeDlInfo.csv
-hikari_*.csv
-*_filings.csv
+/exports/
 
 # Cache
 cache/
