@@ -153,26 +153,30 @@ def get_issuers_by_filer(db: Session, filer_id: int, skip: int = 0, limit: int =
         latest_holdings = (
             db.query(
                 latest_filing_subq.c.issuer_id,
-                HoldingDetail.holding_ratio
+                HoldingDetail.holding_ratio,
+                HoldingDetail.purpose
             )
             .join(HoldingDetail, HoldingDetail.filing_id == latest_filing_subq.c.latest_filing_id)
             .all()
         )
         
-        holdings_map = {issuer_id: ratio for issuer_id, ratio in latest_holdings}
+        holdings_map = {issuer_id: {"ratio": ratio, "purpose": purpose} for issuer_id, ratio, purpose in latest_holdings}
     else:
         holdings_map = {}
     
     # 結果を構築
     issuer_data = []
     for issuer, latest_date, filing_count in results:
-        latest_ratio = holdings_map.get(issuer.id)
+        holding_info = holdings_map.get(issuer.id, {})
+        latest_ratio = holding_info.get("ratio")
+        latest_purpose = holding_info.get("purpose")
         
         issuer_data.append({
             "issuer": issuer,
             "latest_filing_date": latest_date,
             "filing_count": filing_count,
             "latest_ratio": latest_ratio,
+            "latest_purpose": latest_purpose,
             "ratio_change": None  # 簡略化のため増減は省略（詳細ページで表示）
         })
     

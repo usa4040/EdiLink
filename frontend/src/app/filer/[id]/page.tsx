@@ -21,6 +21,7 @@ interface Issuer {
     latest_filing_date: string | null;
     filing_count: number;
     latest_ratio?: number | null;
+    latest_purpose?: string | null;
     ratio_change?: number | null;
 }
 
@@ -297,8 +298,15 @@ export default function FilerDetail() {
                                         </svg>
                                     </div>
 
-                                    {/* 銘柄名 */}
-                                    <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 line-clamp-2 text-sm sm:text-base">{issuer.name || issuer.edinet_code}</h3>
+                                    {/* 銘柄名と保有目的 */}
+                                    <div className="mb-3 sm:mb-4">
+                                        <h3 className="font-semibold text-gray-900 line-clamp-2 text-sm sm:text-base mb-1">{issuer.name || issuer.edinet_code}</h3>
+                                        {issuer.latest_purpose && (
+                                            <p className="text-xs text-gray-500 line-clamp-2" title={issuer.latest_purpose}>
+                                                <span className="font-medium text-gray-400">目的:</span> {issuer.latest_purpose}
+                                            </p>
+                                        )}
+                                    </div>
 
                                     {/* 保有比率 */}
                                     <div className="flex items-end justify-between">
