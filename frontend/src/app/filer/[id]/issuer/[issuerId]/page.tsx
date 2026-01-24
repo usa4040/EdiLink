@@ -145,7 +145,7 @@ export default function IssuerHistory() {
                 <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-8 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div className="flex items-start gap-3 sm:gap-6">
-                            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg sm:text-2xl shrink-0">
+                            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg sm:text-2xl shrink-0">
                                 {(data.issuer.name || data.issuer.edinet_code).charAt(0)}
                             </div>
                             <div className="min-w-0 flex-1">

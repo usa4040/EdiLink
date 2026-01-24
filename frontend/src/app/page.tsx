@@ -143,7 +143,7 @@ export default function Home() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link
             href="/filer/1"
-            className="group block p-5 bg-gradient-to-br from-indigo-50 to-white hover:from-white hover:to-indigo-50 border border-indigo-100 hover:border-indigo-300 rounded-xl shadow-sm hover:shadow-md transition-all"
+            className="group block p-5 bg-linear-to-br from-indigo-50 to-white hover:from-white hover:to-indigo-50 border border-indigo-100 hover:border-indigo-300 rounded-xl shadow-sm hover:shadow-md transition-all"
           >
             <div className="flex items-center gap-4 mb-3">
               <div className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-indigo-200 group-hover:scale-110 transition-transform">
@@ -156,6 +156,29 @@ export default function Home() {
             </div>
             <p className="text-sm text-gray-600 mb-3">
               純投資・アクティビスト活動で知られる主要投資家。最新の保有銘柄と動向をチェックできます。
+            </p>
+            <div className="flex items-center text-indigo-600 text-sm font-medium group-hover:translate-x-1 transition-transform">
+              ダッシュボードを見る
+              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </div>
+          </Link>
+          <Link
+            href="/filer/5557"
+            className="group block p-5 bg-linear-to-br from-indigo-50 to-white hover:from-white hover:to-indigo-50 border border-indigo-100 hover:border-indigo-300 rounded-xl shadow-sm hover:shadow-md transition-all"
+          >
+            <div className="flex items-center gap-4 mb-3">
+              <div className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-indigo-200 group-hover:scale-110 transition-transform">
+                F
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">Fundnote株式会社</h3>
+                <p className="text-xs text-gray-500">E40155</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">
+              積極的な投資活動を行う機関投資家。
             </p>
             <div className="flex items-center text-indigo-600 text-sm font-medium group-hover:translate-x-1 transition-transform">
               ダッシュボードを見る
