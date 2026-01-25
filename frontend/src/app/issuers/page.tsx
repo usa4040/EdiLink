@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
+import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 interface Issuer {
@@ -18,7 +19,7 @@ interface ApiResponse {
     limit: number;
 }
 
-export default function IssuersPage() {
+function IssuerSearchContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [data, setData] = useState<ApiResponse | null>(null);
@@ -126,5 +127,13 @@ export default function IssuersPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function IssuersPage() {
+    return (
+        <Suspense fallback={<div className="container mx-auto p-8 text-center text-gray-500">読み込み中...</div>}>
+            <IssuerSearchContent />
+        </Suspense>
     );
 }
