@@ -188,6 +188,28 @@ def get_issuers_by_filer(db: Session, filer_id: int, skip: int = 0, limit: int =
     }
 
 
+def get_issuers(db: Session, skip: int = 0, limit: int = 50, search: str = None) -> dict:
+    """銘柄一覧をページネーション付きで取得"""
+    query = db.query(Issuer)
+
+    if search:
+        query = query.filter(
+            (Issuer.name.ilike(f"%{search}%")) |
+            (Issuer.sec_code.ilike(f"%{search}%")) |
+            (Issuer.edinet_code.ilike(f"%{search}%"))
+        )
+
+    total = query.count()
+    items = query.offset(skip).limit(limit).all()
+
+    return {
+        "items": items,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
 def get_issuer_by_id(db: Session, issuer_id: int) -> Optional[Issuer]:
     """IDで発行体を取得"""
     return db.query(Issuer).filter(Issuer.id == issuer_id).first()
