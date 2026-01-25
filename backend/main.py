@@ -145,6 +145,34 @@ def get_issuers_by_filer(
     }
 
 
+@app.get("/api/issuers")
+def get_issuers(
+    skip: int = 0,
+    limit: int = 50,
+    search: str = None,
+    db: Session = Depends(get_db)
+):
+    """銘柄一覧を取得（ページネーション・検索対応）"""
+    data = crud.get_issuers(db, skip=skip, limit=limit, search=search)
+    
+    result = []
+    for issuer in data["items"]:
+        result.append(schemas.IssuerResponse(
+            id=issuer.id,
+            edinet_code=issuer.edinet_code,
+            name=issuer.name or issuer.edinet_code,
+            sec_code=issuer.sec_code
+            # latest_filing_date等は一覧取得時は重くなるため含めない、もしくはNone
+        ))
+    
+    return {
+        "items": result,
+        "total": data["total"],
+        "skip": data["skip"],
+        "limit": data["limit"]
+    }
+
+
 # === Filings (報告書) ===
 
 @app.get("/api/filers/{filer_id}/filings", response_model=List[schemas.FilingResponse])
