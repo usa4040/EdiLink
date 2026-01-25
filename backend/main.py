@@ -173,6 +173,47 @@ def get_issuers(
     }
 
 
+@app.get("/api/issuers/{issuer_id}", response_model=schemas.IssuerResponse)
+def get_issuer(
+    issuer_id: int,
+    db: Session = Depends(get_db)
+):
+    """銘柄詳細（基本情報）を取得"""
+    issuer = crud.get_issuer_by_id(db, issuer_id)
+    if not issuer:
+        raise HTTPException(status_code=404, detail="Issuer not found")
+    # 詳細情報（latest_filing_dateなど）は今回は省略、必要ならget_filings等から取得
+    return schemas.IssuerResponse(
+        id=issuer.id,
+        edinet_code=issuer.edinet_code,
+        name=issuer.name or issuer.edinet_code,
+        sec_code=issuer.sec_code
+    )
+
+
+@app.get("/api/issuers/{issuer_id}/ownerships", response_model=schemas.IssuerOwnershipResponse)
+def get_issuer_ownerships(
+    issuer_id: int,
+    db: Session = Depends(get_db)
+):
+    """銘柄を保有している投資家一覧を取得"""
+    issuer = crud.get_issuer_by_id(db, issuer_id)
+    if not issuer:
+        raise HTTPException(status_code=404, detail="Issuer not found")
+    
+    ownerships = crud.get_issuer_ownerships(db, issuer_id)
+    
+    return {
+        "issuer": schemas.IssuerResponse(
+            id=issuer.id,
+            edinet_code=issuer.edinet_code,
+            name=issuer.name or issuer.edinet_code,
+            sec_code=issuer.sec_code
+        ),
+        "ownerships": ownerships
+    }
+
+
 # === Filings (報告書) ===
 
 @app.get("/api/filers/{filer_id}/filings", response_model=List[schemas.FilingResponse])

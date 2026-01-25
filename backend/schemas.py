@@ -100,3 +100,20 @@ class IssuerHistoryResponse(BaseModel):
     issuer: IssuerResponse
     filer: FilerResponse
     history: List[FilingHistoryItem]
+
+
+class OwnershipItem(BaseModel):
+    filer_id: int
+    filer_name: str
+    latest_submit_date: Optional[datetime] = None
+    shares_held: Optional[int] = None
+    holding_ratio: Optional[float] = None
+    purpose: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class IssuerOwnershipResponse(BaseModel):
+    issuer: IssuerResponse
+    ownerships: List[OwnershipItem]
