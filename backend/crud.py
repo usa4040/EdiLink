@@ -258,3 +258,50 @@ def get_filer_stats(db: Session, filer_id: int) -> dict:
         "issuer_count": issuer_count,
         "latest_filing_date": latest_filing.submit_date if latest_filing else None
     }
+
+
+def get_issuer_ownerships(db: Session, issuer_id: int) -> List[dict]:
+    """
+    指定された銘柄を保有している投資家の最新状況を取得
+    """
+    # 各投資家ごとに、対象銘柄に対する最新のFiling IDを取得するサブクエリ
+    latest_filing_subq = (
+        db.query(
+            Filing.filer_id,
+            func.max(Filing.submit_date).label("latest_submit_date"),
+            func.max(Filing.id).label("latest_filing_id")
+        )
+        .filter(Filing.issuer_id == issuer_id)
+        .group_by(Filing.filer_id)
+        .subquery()
+    )
+
+    # 最新Filingの情報とHoldingDetail、Filer情報を結合して取得
+    results = (
+        db.query(
+            Filer.id.label("filer_id"),
+            Filer.name.label("filer_name"),
+            latest_filing_subq.c.latest_submit_date,
+            HoldingDetail.shares_held,
+            HoldingDetail.holding_ratio,
+            HoldingDetail.purpose
+        )
+        .join(latest_filing_subq, Filer.id == latest_filing_subq.c.filer_id)
+        .join(HoldingDetail, HoldingDetail.filing_id == latest_filing_subq.c.latest_filing_id)
+        .order_by(desc(HoldingDetail.holding_ratio))  # 保有比率の高い順
+        .all()
+    )
+
+    ownerships = []
+    for row in results:
+        # Pydanticモデルではなく辞書で返す（呼び出し元で整形）
+        ownerships.append({
+            "filer_id": row.filer_id,
+            "filer_name": row.filer_name,
+            "latest_submit_date": row.latest_submit_date,
+            "shares_held": row.shares_held,
+            "holding_ratio": row.holding_ratio,
+            "purpose": row.purpose
+        })
+    
+    return ownerships

@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-
-import { Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 interface Issuer {
@@ -114,9 +113,12 @@ function IssuerSearchContent() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 {/* 該当銘柄の詳細ページへのリンク（今回は仮としてボタンのみ配置） */}
-                                                <button className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-md">
+                                                <Link
+                                                    href={`/issuers/${issuer.id}`}
+                                                    className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-md inline-block"
+                                                >
                                                     詳細を見る
-                                                </button>
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))
