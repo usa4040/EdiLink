@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { IssuerTable } from "./IssuerTable";
 
 interface Filer {
     id: number;
@@ -108,20 +109,7 @@ export default function FilerDetail() {
         }
     }, [filerId, fetchIssuers]);
 
-    const formatDate = (dateString: string | null) => {
-        if (!dateString) return "-";
-        const date = new Date(dateString);
-        return date.toLocaleDateString("ja-JP", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-        }).replace(/\//g, "-");
-    };
 
-    const formatRatio = (ratio: number | null | undefined) => {
-        if (ratio === null || ratio === undefined) return "-";
-        return `${ratio.toFixed(2)}%`;
-    };
 
     // クライアントサイドソート
     const sortedIssuers = [...issuers].sort((a, b) => {
@@ -271,57 +259,20 @@ export default function FilerDetail() {
                     </div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                            {sortedIssuers.map((issuer) => (
-                                <Link
-                                    key={issuer.id}
-                                    href={`/filer/${filerId}/issuer/${issuer.id}`}
-                                    className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 hover:border-indigo-300 hover:shadow-md transition-all active:scale-[0.98]"
-                                >
-                                    {/* ヘッダー */}
-                                    <div className="flex items-start justify-between mb-2 sm:mb-3">
-                                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                                            {issuer.filing_count === 1 && (
-                                                <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-emerald-100 text-emerald-600 text-[10px] sm:text-xs font-bold rounded">
-                                                    New!
-                                                </span>
-                                            )}
-                                            {issuer.sec_code && (
-                                                <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-indigo-100 text-indigo-600 text-[10px] sm:text-xs font-medium rounded">
-                                                    {issuer.sec_code.slice(0, 4)}
-                                                </span>
-                                            )}
-                                            <span className="text-[10px] sm:text-xs text-gray-400">{formatDate(issuer.latest_filing_date)}</span>
-                                        </div>
-                                        <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </div>
-
-                                    {/* 銘柄名と保有目的 */}
-                                    <div className="mb-3 sm:mb-4">
-                                        <h3 className="font-semibold text-gray-900 line-clamp-2 text-sm sm:text-base mb-1">{issuer.name || issuer.edinet_code}</h3>
-                                        {issuer.latest_purpose && (
-                                            <p className="text-xs text-gray-500 line-clamp-2" title={issuer.latest_purpose}>
-                                                <span className="font-medium text-gray-400">目的:</span> {issuer.latest_purpose}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* 保有比率 */}
-                                    <div className="flex items-end justify-between">
-                                        <div>
-                                            <p className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">保有比率</p>
-                                            <p className="text-xl sm:text-2xl font-bold text-gray-900">{formatRatio(issuer.latest_ratio)}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">報告数</p>
-                                            <p className="text-base sm:text-lg font-semibold text-gray-600">{issuer.filing_count}件</p>
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
+                        <IssuerTable
+                            issuers={sortedIssuers}
+                            filerId={filerId}
+                            sortKey={sortKey}
+                            sortOrder={sortOrder}
+                            onSort={(key) => {
+                                if (sortKey === key) {
+                                    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                    setSortKey(key);
+                                    setSortOrder("desc"); // Default to desc for new sort
+                                }
+                            }}
+                        />
 
                         {/* ページネーション */}
                         {totalPages > 1 && (
