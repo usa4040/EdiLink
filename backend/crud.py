@@ -41,7 +41,7 @@ def get_filers(db: Session, skip: int = 0, limit: int = 50, search: str = None) 
             filing_stats.c.issuer_count,
             filing_stats.c.latest_filing_date
         )
-        .order_by(desc(filing_stats.c.latest_filing_date))
+        .order_by(desc(filing_stats.c.issuer_count))
         .offset(skip)
         .limit(limit)
         .all()
