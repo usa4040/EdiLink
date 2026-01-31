@@ -11,6 +11,7 @@ import argparse
 import contextlib
 import time
 from datetime import datetime, timedelta
+from typing import TypedDict
 
 import requests
 from dotenv import load_dotenv
@@ -286,10 +287,9 @@ def download_document_csv(doc_id: str) -> bytes | None:
     return None
 
 
-from typing import TypedDict
-
-
 class HoldingDataResult(TypedDict):
+    """保有データの型定義"""
+
     shares_held: int | None
     holding_ratio: float | None
     purpose: str | None
