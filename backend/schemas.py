@@ -1,6 +1,15 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+# === Pagination ===
+class PaginationParams(BaseModel):
+    skip: int = Field(0, ge=0, le=10000, description="スキップ数")
+    limit: int = Field(50, ge=1, le=100, description="取得件数")
+
+    class Config:
+        json_schema_extra = {"example": {"skip": 0, "limit": 50}}
 
 
 # === Filer ===
