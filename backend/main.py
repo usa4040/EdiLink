@@ -1,10 +1,16 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from secure import Secure
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from backend import crud, schemas
 from backend.database import get_db
 from backend.models import Base, get_engine
+
+limiter = Limiter(key_func=get_remote_address)
 
 # データベース初期化
 engine = get_engine()
@@ -15,15 +21,26 @@ app = FastAPI(
     description="大量保有報告書を閲覧・検索するためのAPI",
     version="1.0.0",
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS設定（フロントエンドからのアクセスを許可）
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET"],  # Only GET for read-only API
+    allow_headers=["Authorization", "Content-Type"],
 )
+
+secure_headers = Secure()
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    secure_headers.framework.fastapi(response)
+    return response
 
 
 @app.get("/")
@@ -35,7 +52,14 @@ def root():
 
 
 @app.get("/api/filers")
-def get_filers(skip: int = 0, limit: int = 50, search: str = None, db: Session = Depends(get_db)):
+@limiter.limit("100/minute")
+def get_filers(
+    request: Request,
+    skip: int = Query(0, ge=0, le=10000, description="スキップ数"),
+    limit: int = Query(50, ge=1, le=100, description="取得件数"),
+    search: str | None = Query(None, max_length=100, description="検索キーワード"),
+    db: Session = Depends(get_db),
+):
     """提出者一覧を取得（ページネーション対応）"""
     data = crud.get_filers(db, skip=skip, limit=limit, search=search)
 
@@ -59,7 +83,8 @@ def get_filers(skip: int = 0, limit: int = 50, search: str = None, db: Session =
 
 
 @app.get("/api/filers/{filer_id}", response_model=schemas.FilerResponse)
-def get_filer(filer_id: int, db: Session = Depends(get_db)):
+@limiter.limit("100/minute")
+def get_filer(request: Request, filer_id: int, db: Session = Depends(get_db)):
     """提出者詳細を取得"""
     filer = crud.get_filer_by_id(db, filer_id)
     if not filer:
@@ -102,8 +127,14 @@ def create_filer(filer: schemas.FilerCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/api/filers/{filer_id}/issuers")
+@limiter.limit("30/minute")
 def get_issuers_by_filer(
-    filer_id: int, skip: int = 0, limit: int = 50, search: str = None, db: Session = Depends(get_db)
+    request: Request,
+    filer_id: int,
+    skip: int = Query(0, ge=0, le=10000, description="スキップ数"),
+    limit: int = Query(50, ge=1, le=100, description="取得件数"),
+    search: str | None = Query(None, max_length=100, description="検索キーワード"),
+    db: Session = Depends(get_db),
 ):
     """提出者が保有している銘柄一覧を取得（ページネーション対応）"""
     filer = crud.get_filer_by_id(db, filer_id)
@@ -132,7 +163,14 @@ def get_issuers_by_filer(
 
 
 @app.get("/api/issuers")
-def get_issuers(skip: int = 0, limit: int = 50, search: str = None, db: Session = Depends(get_db)):
+@limiter.limit("100/minute")
+def get_issuers(
+    request: Request,
+    skip: int = Query(0, ge=0, le=10000, description="スキップ数"),
+    limit: int = Query(50, ge=1, le=100, description="取得件数"),
+    search: str | None = Query(None, max_length=100, description="検索キーワード"),
+    db: Session = Depends(get_db),
+):
     """銘柄一覧を取得（ページネーション・検索対応）"""
     data = crud.get_issuers(db, skip=skip, limit=limit, search=search)
 
@@ -152,7 +190,8 @@ def get_issuers(skip: int = 0, limit: int = 50, search: str = None, db: Session 
 
 
 @app.get("/api/issuers/{issuer_id}", response_model=schemas.IssuerResponse)
-def get_issuer(issuer_id: int, db: Session = Depends(get_db)):
+@limiter.limit("100/minute")
+def get_issuer(request: Request, issuer_id: int, db: Session = Depends(get_db)):
     """銘柄詳細（基本情報）を取得"""
     issuer = crud.get_issuer_by_id(db, issuer_id)
     if not issuer:
@@ -167,7 +206,8 @@ def get_issuer(issuer_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/api/issuers/{issuer_id}/ownerships", response_model=schemas.IssuerOwnershipResponse)
-def get_issuer_ownerships(issuer_id: int, db: Session = Depends(get_db)):
+@limiter.limit("50/minute")
+def get_issuer_ownerships(request: Request, issuer_id: int, db: Session = Depends(get_db)):
     """銘柄を保有している投資家一覧を取得"""
     issuer = crud.get_issuer_by_id(db, issuer_id)
     if not issuer:
@@ -190,7 +230,10 @@ def get_issuer_ownerships(issuer_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/api/filers/{filer_id}/filings", response_model=list[schemas.FilingResponse])
-def get_filings_by_filer(filer_id: int, limit: int = 100, db: Session = Depends(get_db)):
+@limiter.limit("50/minute")
+def get_filings_by_filer(
+    request: Request, filer_id: int, limit: int = 100, db: Session = Depends(get_db)
+):
     """提出者の報告書一覧を取得"""
     filer = crud.get_filer_by_id(db, filer_id)
     if not filer:
@@ -219,7 +262,10 @@ def get_filings_by_filer(filer_id: int, limit: int = 100, db: Session = Depends(
 
 
 @app.get("/api/filers/{filer_id}/issuers/{issuer_id}/history")
-def get_issuer_history(filer_id: int, issuer_id: int, db: Session = Depends(get_db)):
+@limiter.limit("50/minute")
+def get_issuer_history(
+    request: Request, filer_id: int, issuer_id: int, db: Session = Depends(get_db)
+):
     """銘柄の報告書履歴を取得"""
     from backend.models import HoldingDetail
 

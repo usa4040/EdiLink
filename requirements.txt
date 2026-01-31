@@ -42,3 +42,7 @@ ruff==0.9.0
 mypy==1.14.1
 sqlalchemy-stubs==0.4
 types-requests==2.32.4.20260107
+
+# Security dependencies
+slowapi==0.1.9
+secure==0.3.0
