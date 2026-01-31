@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, create_engine
@@ -104,9 +105,6 @@ class HoldingDetail(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     filing = relationship("Filing", back_populates="holding_details")
-
-
-import os
 
 
 # データベース接続用のエンジン作成関数

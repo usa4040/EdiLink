@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
+import contextlib
 import time
 from datetime import datetime, timedelta
 
@@ -178,10 +179,8 @@ def sync_documents(filer_edinet_code: str = None, days: int = 365, use_cache: bo
                 # 3. 報告書（Filing）の登録
                 submit_date = None
                 if doc.get("submitDateTime"):
-                    try:
+                    with contextlib.suppress(Exception):
                         submit_date = datetime.strptime(doc["submitDateTime"], "%Y-%m-%d %H:%M")
-                    except:
-                        pass
 
                 filing = Filing(
                     doc_id=doc_id,
@@ -318,12 +317,12 @@ def extract_holding_data_from_csv(csv_content: bytes) -> dict:
                                 sep="\t",
                                 on_bad_lines="skip",
                             )
-                        except:
+                        except Exception:
                             try:
                                 df = pd.read_csv(
                                     io.BytesIO(content), encoding="cp932", on_bad_lines="skip"
                                 )
-                            except:
+                            except Exception:
                                 continue
 
                         # EDINETのCSVは「項目名」「値」という列構成
@@ -342,13 +341,12 @@ def extract_holding_data_from_csv(csv_content: bytes) -> dict:
                                         # 保有割合は0-1の範囲で格納されている場合は100倍する
                                         if 0 < ratio <= 1:
                                             ratio = ratio * 100  # パーセンテージに変換
-                                        if 0 < ratio <= 100:
-                                            if (
-                                                result["holding_ratio"] is None
-                                                or ratio > result["holding_ratio"]
-                                            ):
-                                                result["holding_ratio"] = ratio
-                                    except:
+                                        if 0 < ratio <= 100 and (
+                                            result["holding_ratio"] is None
+                                            or ratio > result["holding_ratio"]
+                                        ):
+                                            result["holding_ratio"] = ratio
+                                    except Exception:
                                         continue
 
                             # 保有株券等の数（総数）を探す（最大の値を取得）
@@ -362,13 +360,12 @@ def extract_holding_data_from_csv(csv_content: bytes) -> dict:
                                         shares = int(
                                             str(val).replace(",", "").replace("株", "").strip()
                                         )
-                                        if shares > 0:
-                                            if (
-                                                result["shares_held"] is None
-                                                or shares > result["shares_held"]
-                                            ):
-                                                result["shares_held"] = shares
-                                    except:
+                                        if shares > 0 and (
+                                            result["shares_held"] is None
+                                            or shares > result["shares_held"]
+                                        ):
+                                            result["shares_held"] = shares
+                                    except Exception:
                                         continue
 
                             # 保有目的を探す
