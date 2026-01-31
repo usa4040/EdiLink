@@ -1,5 +1,5 @@
 from sqlalchemy import desc, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from backend.models import Filer, FilerCode, Filing, HoldingDetail, Issuer
 
@@ -60,13 +60,24 @@ def get_filers(db: Session, skip: int = 0, limit: int = 50, search: str | None =
 
 
 def get_filer_by_id(db: Session, filer_id: int) -> Filer | None:
-    """IDで提出者を取得"""
-    return db.query(Filer).filter(Filer.id == filer_id).first()
+    """IDで提出者を取得 (filer_codesをEager Loading)"""
+    result: Filer | None = (
+        db.query(Filer)
+        .filter(Filer.id == filer_id)
+        .options(selectinload(Filer.filer_codes))
+        .first()
+    )
+    return result
 
 
 def get_filer_by_edinet_code(db: Session, edinet_code: str) -> Filer | None:
     """EDINETコードで提出者を取得"""
-    filer_code = db.query(FilerCode).filter(FilerCode.edinet_code == edinet_code).first()
+    filer_code = (
+        db.query(FilerCode)
+        .filter(FilerCode.edinet_code == edinet_code)
+        .options(joinedload(FilerCode.filer))
+        .first()
+    )
     return filer_code.filer if filer_code else None
 
 
@@ -195,25 +206,33 @@ def get_issuer_by_id(db: Session, issuer_id: int) -> Issuer | None:
 
 
 def get_filings_by_issuer_and_filer(db: Session, issuer_id: int, filer_id: int) -> list[Filing]:
-    """特定の発行体・提出者の報告書履歴を取得"""
-    return (
+    """特定の発行体・提出者の報告書履歴を取得 (関連データをEager Loading)"""
+    result: list[Filing] = (
         db.query(Filing)
         .filter(Filing.issuer_id == issuer_id)
         .filter(Filing.filer_id == filer_id)
+        .options(
+            joinedload(Filing.filer),
+            joinedload(Filing.issuer),
+            selectinload(Filing.holding_details),
+        )
         .order_by(desc(Filing.submit_date))
         .all()
     )
+    return result
 
 
 def get_filings_by_filer(db: Session, filer_id: int, limit: int = 100) -> list[Filing]:
-    """提出者のすべての報告書を取得"""
-    return (
+    """提出者のすべての報告書を取得 (issuerとholding_detailsをEager Loading)"""
+    result: list[Filing] = (
         db.query(Filing)
         .filter(Filing.filer_id == filer_id)
+        .options(joinedload(Filing.issuer), selectinload(Filing.holding_details))
         .order_by(desc(Filing.submit_date))
         .limit(limit)
         .all()
     )
+    return result
 
 
 def get_filer_stats(db: Session, filer_id: int) -> dict:
