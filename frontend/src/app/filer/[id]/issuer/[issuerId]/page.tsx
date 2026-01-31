@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { formatDate } from "@/utils/date";
 
 interface Filer {
     id: number;
@@ -61,16 +62,6 @@ export default function IssuerHistory() {
             fetchHistory();
         }
     }, [filerId, issuerId, fetchHistory]);
-
-    const formatDate = (dateString: string | null) => {
-        if (!dateString) return "-";
-        const date = new Date(dateString);
-        return date.toLocaleDateString("ja-JP", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-        }).replace(/\//g, "-");
-    };
 
     const formatNumber = (num: number | null) => {
         if (num === null) return "-";

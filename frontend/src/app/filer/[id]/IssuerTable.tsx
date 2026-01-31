@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatDate } from "@/utils/date";
 
 interface Issuer {
     id: number;
@@ -28,16 +29,6 @@ const SortIcon = ({ active, order }: { active: boolean; order: "asc" | "desc" })
 };
 
 export function IssuerTable({ issuers, filerId, sortKey, sortOrder, onSort }: IssuerTableProps) {
-    const formatDate = (dateString: string | null) => {
-        if (!dateString) return "-";
-        const date = new Date(dateString);
-        return date.toLocaleDateString("ja-JP", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-        }).replace(/\//g, "-");
-    };
-
     const formatRatio = (ratio: number | null | undefined) => {
         if (ratio === null || ratio === undefined) return "-";
         return `${ratio.toFixed(2)}%`;
