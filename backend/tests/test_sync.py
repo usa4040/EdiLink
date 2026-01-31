@@ -1,4 +1,3 @@
-
 from backend.sync_edinet import extract_holding_data_from_csv
 
 
@@ -14,7 +13,7 @@ def test_extract_holding_data_from_tsv_logic():
     # あるいは本物のZIPを模したデータを生成してテストする
 
     # ここでは関数の振る舞いを検証
-    result = extract_holding_data_from_csv(content_utf16)
+    _result = extract_holding_data_from_csv(content_utf16)
 
     # ratio_changeの計算などはAPI側で行うが、抽出が正しいかを確認
     # ※ extract_holding_data_from_csv はZIP解凍も含むため、
