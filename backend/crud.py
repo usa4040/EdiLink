@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from backend.models import Filer, FilerCode, Filing, HoldingDetail, Issuer
 
 
-def get_filers(db: Session, skip: int = 0, limit: int = 50, search: str = None) -> dict:
+def get_filers(db: Session, skip: int = 0, limit: int = 50, search: str | None = None) -> dict:
     """提出者をページネーション付きで取得（統計情報も含む）"""
     # ベースクエリ
     query = db.query(Filer)
@@ -70,7 +70,7 @@ def get_filer_by_edinet_code(db: Session, edinet_code: str) -> Filer | None:
     return filer_code.filer if filer_code else None
 
 
-def create_filer(db: Session, edinet_code: str, name: str, sec_code: str = None) -> Filer:
+def create_filer(db: Session, edinet_code: str, name: str, sec_code: str | None = None) -> Filer:
     """新しい提出者を作成（FilerCodeも同時に作成）"""
     filer = Filer(edinet_code=edinet_code, name=name, sec_code=sec_code)
     db.add(filer)
@@ -84,7 +84,7 @@ def create_filer(db: Session, edinet_code: str, name: str, sec_code: str = None)
 
 
 def get_issuers_by_filer(
-    db: Session, filer_id: int, skip: int = 0, limit: int = 50, search: str = None
+    db: Session, filer_id: int, skip: int = 0, limit: int = 50, search: str | None = None
 ) -> dict:
     """提出者が保有している発行体（銘柄）一覧をページネーション付きで取得"""
     # 各発行体について、最新の報告書情報を取得
@@ -172,7 +172,7 @@ def get_issuers_by_filer(
     return {"items": issuer_data, "total": total, "skip": skip, "limit": limit}
 
 
-def get_issuers(db: Session, skip: int = 0, limit: int = 50, search: str = None) -> dict:
+def get_issuers(db: Session, skip: int = 0, limit: int = 50, search: str | None = None) -> dict:
     """銘柄一覧をページネーション付きで取得"""
     query = db.query(Issuer)
 

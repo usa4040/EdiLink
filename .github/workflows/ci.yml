@@ -29,6 +29,9 @@ jobs:
       - name: Check code formatting
         run: ruff format backend/ --check
 
+      - name: Run mypy type check
+        run: mypy backend/
+
       - name: Run tests
         run: |
           pytest

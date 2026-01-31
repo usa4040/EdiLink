@@ -11,6 +11,7 @@ import argparse
 import contextlib
 import time
 from datetime import datetime, timedelta
+from typing import TypedDict
 
 import requests
 from dotenv import load_dotenv
@@ -27,10 +28,10 @@ API_KEY = os.getenv("API_KEY")
 EDINET_API_BASE = "https://disclosure.edinet-fsa.go.jp/api/v2"
 
 
-def get_documents_by_date(target_date: datetime) -> dict:
+def get_documents_by_date(target_date: datetime) -> dict | None:
     """指定した日の書類一覧を取得"""
     url = f"{EDINET_API_BASE}/documents.json"
-    params = {
+    params: dict[str, str | int | None] = {
         "date": target_date.strftime("%Y-%m-%d"),
         "type": 2,  # 2: メタデータのみ
         "Subscription-Key": API_KEY,
@@ -38,13 +39,14 @@ def get_documents_by_date(target_date: datetime) -> dict:
     try:
         response = requests.get(url, params=params, timeout=30)
         if response.status_code == 200:
-            return response.json()
+            result: dict = response.json()
+            return result
     except Exception as e:
         print(f"Error fetching {target_date}: {e}")
     return None
 
 
-def sync_documents(filer_edinet_code: str = None, days: int = 365, use_cache: bool = True):
+def sync_documents(filer_edinet_code: str | None = None, days: int = 365, use_cache: bool = True):
     """
     EDINET APIから書類一覧を取得してDBに保存
 
@@ -205,7 +207,7 @@ def sync_documents(filer_edinet_code: str = None, days: int = 365, use_cache: bo
     print(f"New Filings: {new_filings}")
 
 
-def sync_issuer_names(csv_path: str = None):
+def sync_issuer_names(csv_path: str | None = None):
     """
     EDINETコードリストから銘柄名を更新
     """
@@ -267,7 +269,7 @@ def sync_issuer_names(csv_path: str = None):
         print(f"Updated {updated} issuers with names")
 
 
-def download_document_csv(doc_id: str) -> bytes:
+def download_document_csv(doc_id: str) -> bytes | None:
     """
     EDINET APIから報告書のCSVデータをダウンロード
     """
@@ -285,7 +287,15 @@ def download_document_csv(doc_id: str) -> bytes:
     return None
 
 
-def extract_holding_data_from_csv(csv_content: bytes) -> dict:
+class HoldingDataResult(TypedDict):
+    """保有データの型定義"""
+
+    shares_held: int | None
+    holding_ratio: float | None
+    purpose: str | None
+
+
+def extract_holding_data_from_csv(csv_content: bytes) -> HoldingDataResult:
     """
     CSVデータから保有株数・保有比率を抽出
 
@@ -296,7 +306,11 @@ def extract_holding_data_from_csv(csv_content: bytes) -> dict:
 
     import pandas as pd
 
-    result = {"shares_held": None, "holding_ratio": None, "purpose": None}
+    result: HoldingDataResult = {
+        "shares_held": None,
+        "holding_ratio": None,
+        "purpose": None,
+    }
 
     try:
         # CSVはZIP形式で提供される
@@ -389,7 +403,9 @@ def extract_holding_data_from_csv(csv_content: bytes) -> dict:
     return result
 
 
-def sync_holding_details(filer_edinet_code: str = None, limit: int = None, year: int = None):
+def sync_holding_details(
+    filer_edinet_code: str | None = None, limit: int | None = None, year: int | None = None
+):
     """
     報告書からCSVをダウンロードして保有詳細を取得・保存
 

@@ -31,3 +31,25 @@ line-ending = "auto"
 
 [tool.ruff.lint.isort]
 known-first-party = ["backend"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # 段階的に有効化
+disallow_incomplete_defs = false  # 段階的に有効化
+check_untyped_defs = true
+ignore_missing_imports = true
+show_error_codes = true
+show_column_numbers = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+# SQLAlchemyの型問題を一時的に無視
+[[tool.mypy.overrides]]
+module = "backend.models"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "backend.main"
+ignore_errors = true
