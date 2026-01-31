@@ -1,13 +1,13 @@
-from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, List
+
+from pydantic import BaseModel
 
 
 # === Filer ===
 class FilerBase(BaseModel):
     edinet_code: str
     name: str
-    sec_code: Optional[str] = None
+    sec_code: str | None = None
 
 
 class FilerCreate(FilerBase):
@@ -17,9 +17,9 @@ class FilerCreate(FilerBase):
 class FilerResponse(FilerBase):
     id: int
     created_at: datetime
-    filing_count: Optional[int] = None
-    issuer_count: Optional[int] = None
-    latest_filing_date: Optional[datetime] = None
+    filing_count: int | None = None
+    issuer_count: int | None = None
+    latest_filing_date: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -28,17 +28,17 @@ class FilerResponse(FilerBase):
 # === Issuer ===
 class IssuerBase(BaseModel):
     edinet_code: str
-    name: Optional[str] = None
-    sec_code: Optional[str] = None
+    name: str | None = None
+    sec_code: str | None = None
 
 
 class IssuerResponse(IssuerBase):
     id: int
-    latest_filing_date: Optional[datetime] = None
-    latest_ratio: Optional[float] = None
-    latest_purpose: Optional[str] = None
-    ratio_change: Optional[float] = None
-    filing_count: Optional[int] = None
+    latest_filing_date: datetime | None = None
+    latest_ratio: float | None = None
+    latest_purpose: str | None = None
+    ratio_change: float | None = None
+    filing_count: int | None = None
 
     class Config:
         from_attributes = True
@@ -47,22 +47,22 @@ class IssuerResponse(IssuerBase):
 # === Filing ===
 class FilingBase(BaseModel):
     doc_id: str
-    doc_description: Optional[str] = None
-    submit_date: Optional[datetime] = None
+    doc_description: str | None = None
+    submit_date: datetime | None = None
 
 
 class FilingResponse(FilingBase):
     id: int
     filer_id: int
-    issuer_id: Optional[int] = None
-    parent_doc_id: Optional[str] = None
+    issuer_id: int | None = None
+    parent_doc_id: str | None = None
     csv_flag: bool
     xbrl_flag: bool
     pdf_flag: bool
-    
+
     # リレーション
-    issuer_name: Optional[str] = None
-    issuer_edinet_code: Optional[str] = None
+    issuer_name: str | None = None
+    issuer_edinet_code: str | None = None
 
     class Config:
         from_attributes = True
@@ -70,9 +70,9 @@ class FilingResponse(FilingBase):
 
 # === HoldingDetail ===
 class HoldingDetailBase(BaseModel):
-    shares_held: Optional[int] = None
-    holding_ratio: Optional[float] = None
-    purpose: Optional[str] = None
+    shares_held: int | None = None
+    holding_ratio: float | None = None
+    purpose: str | None = None
 
 
 class HoldingDetailResponse(HoldingDetailBase):
@@ -86,11 +86,11 @@ class HoldingDetailResponse(HoldingDetailBase):
 # === History (銘柄の履歴) ===
 class FilingHistoryItem(BaseModel):
     doc_id: str
-    submit_date: Optional[datetime] = None
-    doc_description: Optional[str] = None
-    shares_held: Optional[int] = None
-    holding_ratio: Optional[float] = None
-    ratio_change: Optional[float] = None  # 前回との差分
+    submit_date: datetime | None = None
+    doc_description: str | None = None
+    shares_held: int | None = None
+    holding_ratio: float | None = None
+    ratio_change: float | None = None  # 前回との差分
 
     class Config:
         from_attributes = True
@@ -99,16 +99,16 @@ class FilingHistoryItem(BaseModel):
 class IssuerHistoryResponse(BaseModel):
     issuer: IssuerResponse
     filer: FilerResponse
-    history: List[FilingHistoryItem]
+    history: list[FilingHistoryItem]
 
 
 class OwnershipItem(BaseModel):
     filer_id: int
     filer_name: str
-    latest_submit_date: Optional[datetime] = None
-    shares_held: Optional[int] = None
-    holding_ratio: Optional[float] = None
-    purpose: Optional[str] = None
+    latest_submit_date: datetime | None = None
+    shares_held: int | None = None
+    holding_ratio: float | None = None
+    purpose: str | None = None
 
     class Config:
         from_attributes = True
@@ -116,4 +116,4 @@ class OwnershipItem(BaseModel):
 
 class IssuerOwnershipResponse(BaseModel):
     issuer: IssuerResponse
-    ownerships: List[OwnershipItem]
+    ownerships: list[OwnershipItem]

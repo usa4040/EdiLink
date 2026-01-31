@@ -1,5 +1,7 @@
-from backend.models import Issuer, Filer, Filing, HoldingDetail, FilerCode
 from datetime import datetime
+
+from backend.models import Filer, FilerCode, Filing, HoldingDetail, Issuer
+
 
 def test_get_issuers_basic(client, db):
     """
@@ -20,7 +22,7 @@ def test_get_issuers_basic(client, db):
     data = response.json()
     assert data["total"] == 3
     assert len(data["items"]) == 3
-    
+
     # ページネーション確認
     response_paged = client.get("/api/issuers?limit=2&skip=1")
     assert response_paged.status_code == 200
@@ -29,6 +31,7 @@ def test_get_issuers_basic(client, db):
     # 順序保証がない場合はセットで比較などが安全だが、実装次第。
     # ここでは件数チェックのみに留めるか、IDでソートされていることを期待するか。
     # 通常はID順や作成順になるはず。
+
 
 def test_get_issuers_search(client, db):
     """
@@ -55,13 +58,14 @@ def test_get_issuers_search(client, db):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["name"] == "Banana Corp"
-    
+
     # EDINETコード検索 "E20003"
     response = client.get("/api/issuers?search=E20003")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["name"] == "Cherry Inc"
+
 
 def test_get_issuers_empty(client):
     """
@@ -72,6 +76,7 @@ def test_get_issuers_empty(client):
     data = response.json()
     assert data["total"] == 0
     assert data["items"] == []
+
 
 def test_get_issuer_ownerships(client, db):
     """
@@ -107,7 +112,7 @@ def test_get_issuer_ownerships(client, db):
         filer_id=filer_a.id,
         issuer_id=issuer.id,
         submit_date=datetime(2025, 1, 1),
-        doc_description="Report A"
+        doc_description="Report A",
     )
     db.add(filing_a)
     db.flush()
@@ -119,7 +124,7 @@ def test_get_issuer_ownerships(client, db):
         filer_id=filer_b.id,
         issuer_id=issuer.id,
         submit_date=datetime(2025, 1, 1),
-        doc_description="Report B Old"
+        doc_description="Report B Old",
     )
     db.add(filing_b_old)
     db.flush()
@@ -131,7 +136,7 @@ def test_get_issuer_ownerships(client, db):
         filer_id=filer_b.id,
         issuer_id=issuer.id,
         submit_date=datetime(2025, 2, 1),
-        doc_description="Report B New"
+        doc_description="Report B New",
     )
     db.add(filing_b_new)
     db.flush()
@@ -152,7 +157,7 @@ def test_get_issuer_ownerships(client, db):
 
     # 内容確認 (Bは最新の12.5%が取得されるべき)
     ownerships = {d["filer_name"]: d for d in data["ownerships"]}
-    
+
     assert "Investor A" in ownerships
     assert ownerships["Investor A"]["holding_ratio"] == 5.0
 
