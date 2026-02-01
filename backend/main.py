@@ -279,13 +279,18 @@ def get_issuer_history(
 
     filings = crud.get_filings_by_issuer_and_filer(db, issuer_id, filer_id)
 
+    # N+1問題解消: 全HoldingDetailを一括取得
+    filing_ids = [f.id for f in filings]
+    holdings = db.query(HoldingDetail).filter(HoldingDetail.filing_id.in_(filing_ids)).all()
+    holding_map = {h.filing_id: h for h in holdings}
+
     history = []
     prev_ratio = None
 
     # 古い順に処理して差分を計算
     for filing in reversed(filings):
-        # HoldingDetailを取得
-        holding = db.query(HoldingDetail).filter(HoldingDetail.filing_id == filing.id).first()
+        # マップからHoldingDetailを取得（クエリ発行なし）
+        holding = holding_map.get(filing.id)
 
         shares_held = holding.shares_held if holding else None
         holding_ratio = holding.holding_ratio if holding else None
