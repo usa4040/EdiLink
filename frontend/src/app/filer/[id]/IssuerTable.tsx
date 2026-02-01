@@ -6,10 +6,10 @@ import { formatDate } from "@/utils/date";
 interface Issuer {
     id: number;
     edinet_code: string;
-    name: string;
+    name: string | null;
     sec_code: string | null;
     latest_filing_date: string | null;
-    filing_count: number;
+    filing_count: number | null;
     latest_ratio?: number | null;
     latest_purpose?: string | null;
     ratio_change?: number | null;

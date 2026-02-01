@@ -3,35 +3,20 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-
-interface Issuer {
-    id: number;
-    edinet_code: string;
-    name: string;
-    sec_code?: string;
-}
-
-interface ApiResponse {
-    items: Issuer[];
-    total: number;
-    skip: number;
-    limit: number;
-}
+import { api, Issuer, PaginatedResponse } from "@/lib/api";
 
 function IssuerSearchContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [data, setData] = useState<ApiResponse | null>(null);
+    const [data, setData] = useState<PaginatedResponse<Issuer> | null>(null);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState(searchParams.get('search') || '');
 
     const fetchData = async (query: string = '') => {
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:8000/api/issuers?search=${encodeURIComponent(query)}&limit=20`);
-            if (!res.ok) throw new Error('API Error');
-            const json = await res.json();
-            setData(json);
+            const json = await api.searchIssuers(query, 20);
+            setData({ items: json, total: json.length, skip: 0, limit: 20 });
         } catch (error) {
             console.error(error);
         } finally {

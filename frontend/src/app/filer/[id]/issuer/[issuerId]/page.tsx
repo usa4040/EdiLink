@@ -4,51 +4,20 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { formatDate } from "@/utils/date";
-
-interface Filer {
-    id: number;
-    edinet_code: string;
-    name: string;
-}
-
-interface Issuer {
-    id: number;
-    edinet_code: string;
-    name: string;
-    sec_code: string | null;
-}
-
-interface HistoryItem {
-    doc_id: string;
-    submit_date: string | null;
-    doc_description: string | null;
-    shares_held: number | null;
-    holding_ratio: number | null;
-    ratio_change: number | null;
-}
-
-interface HistoryResponse {
-    filer: Filer;
-    issuer: Issuer;
-    history: HistoryItem[];
-}
+import { api, IssuerHistoryResponse } from "@/lib/api";
 
 export default function IssuerHistory() {
     const params = useParams();
     const filerId = params.id as string;
     const issuerId = params.issuerId as string;
 
-    const [data, setData] = useState<HistoryResponse | null>(null);
+    const [data, setData] = useState<IssuerHistoryResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const fetchHistory = useCallback(async () => {
         try {
-            const response = await fetch(
-                `http://localhost:8000/api/filers/${filerId}/issuers/${issuerId}/history`
-            );
-            if (!response.ok) throw new Error("データが見つかりません");
-            const result = await response.json();
+            const result = await api.getIssuerHistory(Number(filerId), Number(issuerId));
             setData(result);
         } catch (err) {
             setError(err instanceof Error ? err.message : "エラーが発生しました");
