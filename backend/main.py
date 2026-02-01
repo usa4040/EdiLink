@@ -104,7 +104,8 @@ def get_filer(request: Request, filer_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/api/filers", response_model=schemas.FilerResponse)
-def create_filer(filer: schemas.FilerCreate, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def create_filer(request: Request, filer: schemas.FilerCreate, db: Session = Depends(get_db)):
     """新しい提出者を追加"""
     existing = crud.get_filer_by_edinet_code(db, filer.edinet_code)
     if existing:
