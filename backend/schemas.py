@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # === Pagination ===
@@ -8,8 +8,7 @@ class PaginationParams(BaseModel):
     skip: int = Field(0, ge=0, le=10000, description="スキップ数")
     limit: int = Field(50, ge=1, le=100, description="取得件数")
 
-    class Config:
-        json_schema_extra = {"example": {"skip": 0, "limit": 50}}
+    model_config = ConfigDict(json_schema_extra={"example": {"skip": 0, "limit": 50}})
 
 
 # === Filer ===
@@ -30,8 +29,7 @@ class FilerResponse(FilerBase):
     issuer_count: int | None = None
     latest_filing_date: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # === Issuer ===
@@ -49,8 +47,7 @@ class IssuerResponse(IssuerBase):
     ratio_change: float | None = None
     filing_count: int | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # === Filing ===
@@ -73,8 +70,7 @@ class FilingResponse(FilingBase):
     issuer_name: str | None = None
     issuer_edinet_code: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # === HoldingDetail ===
@@ -88,8 +84,7 @@ class HoldingDetailResponse(HoldingDetailBase):
     id: int
     filing_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # === History (銘柄の履歴) ===
@@ -101,8 +96,7 @@ class FilingHistoryItem(BaseModel):
     holding_ratio: float | None = None
     ratio_change: float | None = None  # 前回との差分
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IssuerHistoryResponse(BaseModel):
@@ -119,8 +113,7 @@ class OwnershipItem(BaseModel):
     holding_ratio: float | None = None
     purpose: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IssuerOwnershipResponse(BaseModel):
