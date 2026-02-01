@@ -3,23 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { formatDate } from "@/utils/date";
-
-interface Filer {
-  id: number;
-  edinet_code: string;
-  name: string;
-  sec_code: string | null;
-  filing_count: number;
-  issuer_count: number;
-  latest_filing_date: string | null;
-}
-
-interface PaginatedResponse {
-  items: Filer[];
-  total: number;
-  skip: number;
-  limit: number;
-}
+import { api, Filer } from "@/lib/api";
 
 const ITEMS_PER_PAGE = 50;
 
@@ -53,9 +37,7 @@ export default function Home() {
         params.append("search", debouncedSearch);
       }
 
-      const response = await fetch(`http://localhost:8000/api/filers?${params}`);
-      if (!response.ok) throw new Error("Failed to fetch filers");
-      const data: PaginatedResponse = await response.json();
+      const data = await api.getFilers(skip, ITEMS_PER_PAGE, debouncedSearch || undefined);
       setFilers(data.items);
       setTotalCount(data.total);
     } catch (err) {

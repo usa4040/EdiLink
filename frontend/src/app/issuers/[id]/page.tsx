@@ -2,27 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-
-interface OwnershipItem {
-    filer_id: number;
-    filer_name: string;
-    latest_submit_date: string;
-    shares_held: number | null;
-    holding_ratio: number | null;
-    purpose: string | null;
-}
-
-interface IssuerDetail {
-    id: number;
-    edinet_code: string;
-    name: string;
-    sec_code?: string;
-}
-
-interface IssuerOwnershipResponse {
-    issuer: IssuerDetail;
-    ownerships: OwnershipItem[];
-}
+import { api, IssuerOwnershipResponse, ApiError } from "@/lib/api";
 
 export default function IssuerDetailPage({ params }: { params: Promise<{ id: string }> }) {
     // Next.js 15+ (Wait for params)
@@ -35,15 +15,12 @@ export default function IssuerDetailPage({ params }: { params: Promise<{ id: str
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch(`http://localhost:8000/api/issuers/${id}/ownerships`);
-                if (!res.ok) {
-                    if (res.status === 404) throw new Error('銘柄が見つかりませんでした');
-                    throw new Error('データの取得に失敗しました');
-                }
-                const json = await res.json();
+                const json = await api.getIssuerOwnerships(Number(id));
                 setData(json);
-            } catch (err: unknown) {
-                if (err instanceof Error) {
+            } catch (err) {
+                if (err instanceof ApiError && err.status === 404) {
+                    setError('銘柄が見つかりませんでした');
+                } else if (err instanceof Error) {
                     setError(err.message);
                 } else {
                     setError('予期せぬエラーが発生しました');

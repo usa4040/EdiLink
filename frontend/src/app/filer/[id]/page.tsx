@@ -4,34 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { IssuerTable } from "./IssuerTable";
-
-interface Filer {
-    id: number;
-    edinet_code: string;
-    name: string;
-    sec_code: string | null;
-    filing_count: number;
-    issuer_count: number;
-}
-
-interface Issuer {
-    id: number;
-    edinet_code: string;
-    name: string;
-    sec_code: string | null;
-    latest_filing_date: string | null;
-    filing_count: number;
-    latest_ratio?: number | null;
-    latest_purpose?: string | null;
-    ratio_change?: number | null;
-}
-
-interface PaginatedResponse {
-    items: Issuer[];
-    total: number;
-    skip: number;
-    limit: number;
-}
+import { api, Filer, Issuer } from "@/lib/api";
 
 const ITEMS_PER_PAGE = 50;
 
@@ -62,9 +35,7 @@ export default function FilerDetail() {
 
     const fetchFiler = useCallback(async () => {
         try {
-            const response = await fetch(`http://localhost:8000/api/filers/${filerId}`);
-            if (!response.ok) throw new Error("提出者が見つかりません");
-            const data = await response.json();
+            const data = await api.getFiler(Number(filerId));
             setFiler(data);
         } catch (err) {
             setError(err instanceof Error ? err.message : "エラーが発生しました");
@@ -77,17 +48,12 @@ export default function FilerDetail() {
         setIssuersLoading(true);
         try {
             const skip = (currentPage - 1) * ITEMS_PER_PAGE;
-            const params = new URLSearchParams({
-                skip: skip.toString(),
-                limit: ITEMS_PER_PAGE.toString(),
-            });
-            if (debouncedSearch) {
-                params.append("search", debouncedSearch);
-            }
-
-            const response = await fetch(`http://localhost:8000/api/filers/${filerId}/issuers?${params}`);
-            if (!response.ok) throw new Error("銘柄データの取得に失敗しました");
-            const data: PaginatedResponse = await response.json();
+            const data = await api.getIssuersByFiler(
+                Number(filerId),
+                skip,
+                ITEMS_PER_PAGE,
+                debouncedSearch || undefined
+            );
             setIssuers(data.items);
             setTotalCount(data.total);
         } catch (err) {
