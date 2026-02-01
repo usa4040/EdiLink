@@ -1,14 +1,23 @@
+import logging
+
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from secure import Secure
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend import crud, schemas
 from backend.database import get_db
 from backend.models import Base, get_engine
+
+# ロギング設定
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -41,6 +50,72 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     secure_headers.framework.fastapi(response)
     return response
+
+
+# === グローバルエラーハンドラ ===
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """予期せぬ例外のハンドラ"""
+    logger.error(
+        f"Unhandled exception: {exc}",
+        exc_info=True,
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "client": request.client.host if request.client else "unknown",
+        },
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "message": "予期せぬエラーが発生しました。管理者に連絡してください。",
+        },
+    )
+
+
+@app.exception_handler(SQLAlchemyError)
+async def database_exception_handler(request: Request, exc: SQLAlchemyError):
+    """データベースエラーのハンドラ"""
+    logger.error(
+        f"Database error: {exc}",
+        exc_info=True,
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "client": request.client.host if request.client else "unknown",
+        },
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Database error",
+            "message": "データベース操作中にエラーが発生しました。",
+        },
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """バリデーションエラーのハンドラ"""
+    logger.warning(
+        f"Validation error: {exc}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "client": request.client.host if request.client else "unknown",
+        },
+    )
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "Validation error",
+            "message": "リクエストパラメータが不正です。",
+            "details": exc.errors(),
+        },
+    )
 
 
 @app.get("/")
