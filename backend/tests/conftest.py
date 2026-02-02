@@ -4,18 +4,17 @@
 
 import os
 import sys
-from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 # プロジェクトルートをパスに追加
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from backend.database import get_db, async_engine
+from backend.database import get_db
 from backend.main import app
 from backend.models import Base
 
@@ -50,14 +49,14 @@ async def db():
     # テーブル作成
     async with test_async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     # セッション作成
     async with TestingSessionLocal() as session:
         try:
             yield session
         finally:
             await session.rollback()
-    
+
     # テーブル削除
     async with test_async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -66,18 +65,18 @@ async def db():
 @pytest_asyncio.fixture(scope="function")
 async def client(db):
     """FastAPIの非同期テストクライアントを提供。DBの依存性をオーバーライド"""
-    
+
     async def override_get_db():
         try:
             yield db
         finally:
             pass
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
-    
+
     app.dependency_overrides.clear()
 
 
@@ -85,9 +84,9 @@ async def client(db):
 @pytest.fixture(scope="function")
 def sync_db():
     """同期版DBセッション（既存テストの互換性用）"""
-    from backend.database import sync_engine, SyncSessionLocal
-    
+    from backend.database import SyncSessionLocal, sync_engine
     from backend.models import Base as SyncBase
+
     SyncBase.metadata.create_all(bind=sync_engine)
     session = SyncSessionLocal()
     try:
@@ -101,13 +100,13 @@ def sync_db():
 def sync_client(sync_db):
     """同期版テストクライアント（既存テストの互換性用）"""
     from fastapi.testclient import TestClient
-    
+
     def override_get_db():
         try:
             yield sync_db
         finally:
             pass
-    
+
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c

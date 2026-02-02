@@ -6,14 +6,12 @@ Alembic環境設定ファイル（非同期PostgreSQL対応）
 同期的なデータベースURLに変換して使用します。
 """
 
-import asyncio
 import os
 import sys
 from logging.config import fileConfig
 
 from sqlalchemy import create_engine, pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 
@@ -45,9 +43,9 @@ target_metadata = Base.metadata
 def get_sync_database_url() -> str:
     """
     環境変数DATABASE_URLから同期的なデータベースURLを取得します。
-    
+
     asyncpgドライバーをpsycopg2（または標準postgresql）に変換します。
-    
+
     Returns:
         str: 同期用のPostgreSQL接続URL
     """
@@ -55,7 +53,7 @@ def get_sync_database_url() -> str:
         "DATABASE_URL",
         "postgresql+asyncpg://edinet:edinet@localhost:5432/edinet"
     )
-    
+
     # asyncpg -> psycopg2 (または標準postgresql) に変換
     if "postgresql+asyncpg" in database_url:
         # psycopg2-binaryを使用
@@ -66,20 +64,20 @@ def get_sync_database_url() -> str:
     elif database_url.startswith("postgres://"):
         # Railway等、古い形式のURLを変換
         database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
-    
+
     return database_url
 
 
 def run_migrations_offline() -> None:
     """
     オフラインモードでマイグレーションを実行します。
-    
+
     'offline' mode migrates the database without creating an Engine.
     This is useful when the database URL is not available at runtime,
     or when we want to generate SQL scripts instead of executing migrations.
     """
     url = get_sync_database_url()
-    
+
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -96,7 +94,7 @@ def run_migrations_offline() -> None:
 def do_run_migrations(connection: Connection) -> None:
     """
     データベース接続を使用してマイグレーションを実行します。
-    
+
     Args:
         connection: SQLAlchemyのデータベース接続
     """
@@ -118,12 +116,12 @@ def do_run_migrations(connection: Connection) -> None:
 def run_migrations_online() -> None:
     """
     オンラインモードでマイグレーションを実行します。
-    
+
     In this scenario we need to create an Engine and associate a connection with the context.
     """
     # 同期的なデータベースURLを取得
     sync_database_url = get_sync_database_url()
-    
+
     # 同期エンジンを作成
     connectable = create_engine(
         sync_database_url,

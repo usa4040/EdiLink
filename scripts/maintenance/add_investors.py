@@ -26,26 +26,26 @@ def main():
         if cur.fetchone():
             print(f'既存: {name} ({edinet_code})')
             continue
-        
+
         # 既存チェック（filersテーブル - 古いスキーマ対応）
         cur.execute('SELECT id FROM filers WHERE edinet_code = ?', (edinet_code,))
         if cur.fetchone():
             print(f'既存: {name} ({edinet_code})')
             continue
-        
+
         # Filer登録（edinet_codeカラムも含む）
         cur.execute(
             'INSERT INTO filers (edinet_code, name, created_at, updated_at) VALUES (?, ?, datetime("now"), datetime("now"))',
             (edinet_code, name)
         )
         filer_id = cur.lastrowid
-        
+
         # FilerCode登録
         cur.execute(
             'INSERT INTO filer_codes (filer_id, edinet_code, name, created_at) VALUES (?, ?, ?, datetime("now"))',
             (filer_id, edinet_code, name)
         )
-        
+
         added.append(name)
         print(f'追加: {name} ({edinet_code})')
 

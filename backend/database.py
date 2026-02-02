@@ -3,10 +3,10 @@
 """
 
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # 環境変数からデータベースURLを取得（デフォルトはPostgreSQL）
 DATABASE_URL = os.getenv(
@@ -34,7 +34,7 @@ AsyncSessionLocal = async_sessionmaker(
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPIの依存性注入用
-    
+
     Yields:
         AsyncSession: 非同期データベースセッション
     """
@@ -53,7 +53,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def get_db_session():
     """
     スクリプト用の非同期コンテキストマネージャ
-    
+
     Usage:
         async with get_db_session() as db:
             result = await db.execute(select(Filer))
@@ -71,8 +71,8 @@ async def get_db_session():
 
 # 後方互換性のための同期版（スクリプト移行用）
 # 移行完了後に削除予定
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 # SQLite用の同期エンジン（データ移行時のみ使用）
 _sqlite_url = os.getenv("SQLITE_URL", "sqlite:///data/edinet.db")
