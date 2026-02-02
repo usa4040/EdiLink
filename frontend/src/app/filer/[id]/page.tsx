@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { IssuerTable } from "./IssuerTable";
-import { api, Filer, Issuer } from "@/lib/api";
+import { useFiler, useFilerIssuers } from "@/hooks";
+import { Issuer } from "@/lib/api";
 
 const ITEMS_PER_PAGE = 50;
 
@@ -12,73 +13,29 @@ export default function FilerDetail() {
     const params = useParams();
     const filerId = params.id as string;
 
-    const [filer, setFiler] = useState<Filer | null>(null);
-    const [issuers, setIssuers] = useState<Issuer[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [issuersLoading, setIssuersLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalCount, setTotalCount] = useState(0);
+    const {
+        filer,
+        loading: filerLoading,
+        error: filerError,
+    } = useFiler(filerId);
+
+    const {
+        issuers,
+        loading: issuersLoading,
+        currentPage,
+        setCurrentPage,
+        searchQuery,
+        setSearchQuery,
+        totalCount,
+        totalPages,
+        refetch,
+    } = useFilerIssuers(filerId);
+
     const [sortKey, setSortKey] = useState<"date" | "ratio" | "name">("date");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-    // デバウンス処理
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(searchQuery);
-            setCurrentPage(1);
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
-
-    const fetchFiler = useCallback(async () => {
-        try {
-            const data = await api.getFiler(Number(filerId));
-            setFiler(data);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "エラーが発生しました");
-        } finally {
-            setLoading(false);
-        }
-    }, [filerId]);
-
-    const fetchIssuers = useCallback(async () => {
-        setIssuersLoading(true);
-        try {
-            const skip = (currentPage - 1) * ITEMS_PER_PAGE;
-            const data = await api.getIssuersByFiler(
-                Number(filerId),
-                skip,
-                ITEMS_PER_PAGE,
-                debouncedSearch || undefined
-            );
-            setIssuers(data.items);
-            setTotalCount(data.total);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIssuersLoading(false);
-        }
-    }, [filerId, currentPage, debouncedSearch]);
-
-    useEffect(() => {
-        if (filerId) {
-            fetchFiler();
-        }
-    }, [filerId, fetchFiler]);
-
-    useEffect(() => {
-        if (filerId) {
-            fetchIssuers();
-        }
-    }, [filerId, fetchIssuers]);
-
-
-
     // クライアントサイドソート
-    const sortedIssuers = [...issuers].sort((a, b) => {
+    const sortedIssuers = [...issuers].sort((a: Issuer, b: Issuer) => {
         let comparison = 0;
 
         switch (sortKey) {
@@ -102,9 +59,7 @@ export default function FilerDetail() {
         return sortOrder === "asc" ? comparison : -comparison;
     });
 
-    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-
-    if (loading) {
+    if (filerLoading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="flex flex-col items-center gap-4">
@@ -115,10 +70,10 @@ export default function FilerDetail() {
         );
     }
 
-    if (error || !filer) {
+    if (filerError || !filer) {
         return (
             <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-                <p className="text-red-600">{error || "提出者が見つかりません"}</p>
+                <p className="text-red-600">{filerError || "提出者が見つかりません"}</p>
                 <Link
                     href="/"
                     className="mt-4 inline-block px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
@@ -158,7 +113,7 @@ export default function FilerDetail() {
                         />
                     </div>
                     <button
-                        onClick={fetchIssuers}
+                        onClick={refetch}
                         className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -284,4 +239,3 @@ export default function FilerDetail() {
         </div>
     );
 }
-

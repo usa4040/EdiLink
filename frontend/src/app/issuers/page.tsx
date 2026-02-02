@@ -1,39 +1,29 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { api, Issuer, PaginatedResponse } from "@/lib/api";
+import { useIssuerSearch } from '@/hooks';
 
 function IssuerSearchContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [data, setData] = useState<PaginatedResponse<Issuer> | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [search, setSearch] = useState(searchParams.get('search') || '');
+    const initialSearch = searchParams.get('search') || '';
 
-    const fetchData = async (query: string = '') => {
-        setLoading(true);
-        try {
-            const json = await api.searchIssuers(query, 20);
-            setData({ items: json, total: json.length, skip: 0, limit: 20 });
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        // URLのクエリパラメータが変わったら再取得
-        const query = searchParams.get('search') || '';
-        fetchData(query);
-        setSearch(query);
-    }, [searchParams]);
+    const {
+        issuers,
+        loading,
+        error,
+        search,
+        setSearch,
+        executeSearch,
+        totalCount,
+    } = useIssuerSearch(initialSearch);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         router.push(`/issuers?search=${encodeURIComponent(search)}`);
+        executeSearch();
     };
 
     return (
@@ -58,12 +48,19 @@ function IssuerSearchContent() {
                 </button>
             </form>
 
+            {/* エラー表示 */}
+            {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6 text-center">
+                    <p className="text-red-600">{error}</p>
+                </div>
+            )}
+
             {/* 結果一覧 */}
-            {data && (
+            {issuers.length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-4 bg-gray-50 border-b border-gray-200">
                         <p className="text-gray-600">
-                            検索結果: <span className="font-bold text-gray-900">{data.total}</span> 件
+                            検索結果: <span className="font-bold text-gray-900">{totalCount}</span> 件
                         </p>
                     </div>
 
@@ -78,39 +75,37 @@ function IssuerSearchContent() {
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {data.items.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                                            該当する銘柄は見つかりませんでした
+                                {issuers.map((issuer) => (
+                                    <tr key={issuer.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
+                                            {issuer.edinet_code}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
+                                            {issuer.sec_code || '-'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            {issuer.name}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <Link
+                                                href={`/issuers/${issuer.id}`}
+                                                className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-md inline-block"
+                                            >
+                                                詳細を見る
+                                            </Link>
                                         </td>
                                     </tr>
-                                ) : (
-                                    data.items.map((issuer) => (
-                                        <tr key={issuer.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
-                                                {issuer.edinet_code}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
-                                                {issuer.sec_code || '-'}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                {issuer.name}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                {/* 該当銘柄の詳細ページへのリンク（今回は仮としてボタンのみ配置） */}
-                                                <Link
-                                                    href={`/issuers/${issuer.id}`}
-                                                    className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-md inline-block"
-                                                >
-                                                    詳細を見る
-                                                </Link>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
+                                ))}
                             </tbody>
                         </table>
                     </div>
+                </div>
+            )}
+
+            {/* 検索結果なし */}
+            {!loading && issuers.length === 0 && search && (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-12 text-center">
+                    <p className="text-gray-500">該当する銘柄は見つかりませんでした</p>
                 </div>
             )}
         </div>

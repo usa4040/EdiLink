@@ -1,36 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { formatDate } from "@/utils/date";
-import { api, IssuerHistoryResponse } from "@/lib/api";
+import { useIssuerHistory } from "@/hooks";
 
 export default function IssuerHistory() {
     const params = useParams();
     const filerId = params.id as string;
     const issuerId = params.issuerId as string;
 
-    const [data, setData] = useState<IssuerHistoryResponse | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    const fetchHistory = useCallback(async () => {
-        try {
-            const result = await api.getIssuerHistory(Number(filerId), Number(issuerId));
-            setData(result);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "エラーが発生しました");
-        } finally {
-            setLoading(false);
-        }
-    }, [filerId, issuerId]);
-
-    useEffect(() => {
-        if (filerId && issuerId) {
-            fetchHistory();
-        }
-    }, [filerId, issuerId, fetchHistory]);
+    const { data, loading, error } = useIssuerHistory(filerId, issuerId);
 
     const formatNumber = (num: number | null) => {
         if (num === null) return "-";
@@ -203,4 +183,3 @@ export default function IssuerHistory() {
         </div>
     );
 }
-

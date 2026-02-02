@@ -1,39 +1,13 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { use } from 'react';
 import Link from 'next/link';
-import { api, IssuerOwnershipResponse, ApiError } from "@/lib/api";
+import { useIssuerOwnerships } from '@/hooks';
 
 export default function IssuerDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    // Next.js 15+ (Wait for params)
     const { id } = use(params);
 
-    const [data, setData] = useState<IssuerOwnershipResponse | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const json = await api.getIssuerOwnerships(Number(id));
-                setData(json);
-            } catch (err) {
-                if (err instanceof ApiError && err.status === 404) {
-                    setError('銘柄が見つかりませんでした');
-                } else if (err instanceof Error) {
-                    setError(err.message);
-                } else {
-                    setError('予期せぬエラーが発生しました');
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        if (id) {
-            fetchData();
-        }
-    }, [id]);
+    const { data, loading, error } = useIssuerOwnerships(id);
 
     if (loading) return <div className="container mx-auto p-8 text-center text-gray-500">読み込み中...</div>;
     if (error) return <div className="container mx-auto p-8 text-center text-red-500">{error}</div>;
