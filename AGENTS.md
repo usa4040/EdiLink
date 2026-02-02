@@ -240,6 +240,59 @@ pytest backend/tests/test_crud.py::test_create_filer -v
 python backend/sync_edinet.py
 ```
 
+**Docker環境で起動（PostgreSQL + Redis）:**
+```bash
+# 1. コンテナ起動（初回はビルドに時間がかかります）
+docker-compose up -d
+
+# 2. 自動で以下が実行されます
+# - PostgreSQL初期化
+# - Redis起動
+# - Alembicマイグレーション
+# - SQLiteデータ移行（既存データがある場合）
+# - FastAPIアプリ起動
+
+# 3. ログ確認
+docker-compose logs -f backend
+
+# 4. 停止
+docker-compose down
+
+# 5. 完全削除（ボリュームも含む）
+docker-compose down -v
+```
+
+**マイグレーション操作:**
+```bash
+# マイグレーション作成（モデル変更後）
+docker-compose exec backend alembic revision --autogenerate -m "description"
+
+# マイグレーション適用
+docker-compose exec backend alembic upgrade head
+
+# マイグレーション履歴確認
+docker-compose exec backend alembic history
+```
+
+**Redisキャッシュ操作:**
+```bash
+# Redis CLIに接続
+docker-compose exec redis redis-cli
+
+# キャッシュ統計
+INFO keyspace
+
+# すべてのキー確認
+KEYS *
+
+# 特定パターンのキー削除
+docker-compose exec backend python -c "
+from backend.cache import clear_cache
+import asyncio
+asyncio.run(clear_cache('*'))
+"
+```
+
 **ドキュメントを確認:**
 - API仕様: `docs/api-reference.md`
 - アーキテクチャ: `docs/architecture.md`
@@ -249,11 +302,20 @@ python backend/sync_edinet.py
 
 ## 環境
 
+### 従来の方法（SQLite）
 - フロントエンドにはNode.js 20+が必要
 - バックエンドにはPython 3.12+が必要
 - SQLiteデータベースは `data/edinet.db` に保存
 - バックエンドはポート8000で実行
 - フロントエンドはポート3000で実行
+
+### 新しい方法（Docker + PostgreSQL + Redis）
+- Docker Desktopが必要
+- 自動でPostgreSQL 15とRedis 7が起動
+- データはDocker Volumeに永続化
+- バックエンド: http://localhost:8000
+- PostgreSQL: localhost:5432
+- Redis: localhost:6379
 
 ---
 
