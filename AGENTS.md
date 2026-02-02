@@ -254,3 +254,70 @@ python backend/sync_edinet.py
 - SQLiteデータベースは `data/edinet.db` に保存
 - バックエンドはポート8000で実行
 - フロントエンドはポート3000で実行
+
+---
+
+## PRレビュープロトコル
+
+### レビュー依頼時の対応
+
+ユーザーからPRレビューを依頼された場合：
+
+1. **PR情報の取得**
+   ```bash
+   gh pr view {NUMBER} --json number,title,body,author,additions,deletions,changedFiles
+   gh pr diff {NUMBER} --name-only
+   gh pr checks {NUMBER}
+   ```
+
+2. **包括的な観点からレビュー**
+
+   | 重大度 | 説明 | 例 |
+   |-------|------|-----|
+   | 🔴 **Critical** | マージ前に必ず修正 | セキュリティ脆弱性、データ損失リスク |
+   | 🟠 **High** | マージ前に修正すべき | バグ、パフォーマンス問題、未処理のエラー |
+   | 🟡 **Medium** | 修正を推奨 | 保守性、可読性、重複コード |
+   | 🟢 **Low** | 改善の余地（任意） | スタイル、命名、ドキュメント |
+
+3. **EdiLink固有のチェック項目**
+
+   **バックエンド (Python/FastAPI):**
+   - SQLAlchemy 2.0パターンの遵守
+   - Pydanticモデルの厳密なバリデーション
+   - レート制限の適用確認
+   - mypy型チェックエラーなし
+   - pytestテストカバレッジ
+
+   **フロントエンド (Next.js/React):**
+   - React 19/Next.js 16のベストプラクティス
+   - TypeScript厳格モード準拠
+   - カスタムフックの適切な使用
+   - Tailwind CSS v4パターン
+   - Vitestテストカバレッジ
+
+4. **レビューレポート形式**
+   ```markdown
+   ## PR #{NUMBER} レビュー結果
+
+   ### 概要
+   - 変更: +X -Y 行
+   - CI: ✅ 通過 / ❌ 失敗
+
+   ### 良い点
+   1.
+
+   ### 懸念事項
+   #### 🔴 Critical (0件)
+   #### 🟠 High (0件)
+   #### 🟡 Medium (0件)
+   #### 🟢 Low (0件)
+
+   ### 最終判定
+   [APPROVE / REQUEST_CHANGES / COMMENT]
+   ```
+
+### セルフレビューの対応
+
+実装者自身によるPRレビューの場合：
+- 公平性を保つため、**別セッション（別エージェント）**でのレビューを推奨
+- または、少なくとも24時間以上間隔を空けて客観的に確認
