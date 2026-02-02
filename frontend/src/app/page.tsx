@@ -1,57 +1,24 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { formatDate } from "@/utils/date";
-import { api, Filer } from "@/lib/api";
+import { useFilers } from "@/hooks";
 
 const ITEMS_PER_PAGE = 50;
 
 export default function Home() {
-  const [filers, setFilers] = useState<Filer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-
-  // デバウンス処理
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-      setCurrentPage(1); // 検索時はページをリセット
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const fetchFilers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const skip = (currentPage - 1) * ITEMS_PER_PAGE;
-      const params = new URLSearchParams({
-        skip: skip.toString(),
-        limit: ITEMS_PER_PAGE.toString(),
-      });
-      if (debouncedSearch) {
-        params.append("search", debouncedSearch);
-      }
-
-      const data = await api.getFilers(skip, ITEMS_PER_PAGE, debouncedSearch || undefined);
-      setFilers(data.items);
-      setTotalCount(data.total);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "エラーが発生しました");
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, debouncedSearch]);
-
-  useEffect(() => {
-    fetchFilers();
-  }, [fetchFilers]);
-
-  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const {
+    filers,
+    loading,
+    error,
+    currentPage,
+    setCurrentPage,
+    searchQuery,
+    setSearchQuery,
+    totalCount,
+    totalPages,
+    refetch,
+  } = useFilers();
 
   if (error) {
     return (
@@ -61,10 +28,7 @@ export default function Home() {
           バックエンドサーバーが起動しているか確認してください
         </p>
         <button
-          onClick={() => {
-            setError(null);
-            fetchFilers();
-          }}
+          onClick={refetch}
           className="mt-4 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
         >
           再試行
@@ -95,7 +59,7 @@ export default function Home() {
             />
           </div>
           <button
-            onClick={fetchFilers}
+            onClick={refetch}
             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -226,4 +190,3 @@ export default function Home() {
     </div>
   );
 }
-
