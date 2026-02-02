@@ -1,19 +1,21 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi_cache.decorator import cache
 from secure import Secure
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend import crud, schemas
+from backend.cache import init_cache
 from backend.database import get_db
-from backend.models import Base, get_engine
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO)
@@ -21,14 +23,18 @@ logger = logging.getLogger(__name__)
 
 limiter = Limiter(key_func=get_remote_address)
 
-# データベース初期化
-engine = get_engine()
-Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_cache()
+    yield
+
 
 app = FastAPI(
     title="EDINET 大量保有報告書 API",
     description="大量保有報告書を閲覧・検索するためのAPI",
     version="1.0.0",
+    lifespan=lifespan,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -119,7 +125,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 @app.get("/")
-def root():
+async def root():
     return {"message": "EDINET 大量保有報告書 API", "version": "1.0.0"}
 
 
@@ -128,12 +134,13 @@ def root():
 
 @app.get("/api/filers")
 @limiter.limit("100/minute")
-def get_filers(
+@cache(expire=300)
+async def get_filers(
     request: Request,
     skip: int = Query(0, ge=0, le=10000, description="スキップ数"),
     limit: int = Query(50, ge=1, le=100, description="取得件数"),
     search: str | None = Query(None, max_length=100, description="検索キーワード"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """提出者一覧を取得（ページネーション対応）"""
     data = crud.get_filers(db, skip=skip, limit=limit, search=search)
@@ -159,7 +166,8 @@ def get_filers(
 
 @app.get("/api/filers/{filer_id}", response_model=schemas.FilerResponse)
 @limiter.limit("100/minute")
-def get_filer(request: Request, filer_id: int, db: Session = Depends(get_db)):
+@cache(expire=600)
+async def get_filer(request: Request, filer_id: int, db: AsyncSession = Depends(get_db)):
     """提出者詳細を取得"""
     filer = crud.get_filer_by_id(db, filer_id)
     if not filer:
@@ -180,7 +188,7 @@ def get_filer(request: Request, filer_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/filers", response_model=schemas.FilerResponse)
 @limiter.limit("10/minute")
-def create_filer(request: Request, filer: schemas.FilerCreate, db: Session = Depends(get_db)):
+async def create_filer(request: Request, filer: schemas.FilerCreate, db: AsyncSession = Depends(get_db)):
     """新しい提出者を追加"""
     existing = crud.get_filer_by_edinet_code(db, filer.edinet_code)
     if existing:
@@ -204,13 +212,14 @@ def create_filer(request: Request, filer: schemas.FilerCreate, db: Session = Dep
 
 @app.get("/api/filers/{filer_id}/issuers")
 @limiter.limit("30/minute")
-def get_issuers_by_filer(
+@cache(expire=300)
+async def get_issuers_by_filer(
     request: Request,
     filer_id: int,
     skip: int = Query(0, ge=0, le=10000, description="スキップ数"),
     limit: int = Query(50, ge=1, le=100, description="取得件数"),
     search: str | None = Query(None, max_length=100, description="検索キーワード"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """提出者が保有している銘柄一覧を取得（ページネーション対応）"""
     filer = crud.get_filer_by_id(db, filer_id)
@@ -240,12 +249,13 @@ def get_issuers_by_filer(
 
 @app.get("/api/issuers")
 @limiter.limit("100/minute")
-def get_issuers(
+@cache(expire=300)
+async def get_issuers(
     request: Request,
     skip: int = Query(0, ge=0, le=10000, description="スキップ数"),
     limit: int = Query(50, ge=1, le=100, description="取得件数"),
     search: str | None = Query(None, max_length=100, description="検索キーワード"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """銘柄一覧を取得（ページネーション・検索対応）"""
     data = crud.get_issuers(db, skip=skip, limit=limit, search=search)
@@ -267,7 +277,8 @@ def get_issuers(
 
 @app.get("/api/issuers/{issuer_id}", response_model=schemas.IssuerResponse)
 @limiter.limit("100/minute")
-def get_issuer(request: Request, issuer_id: int, db: Session = Depends(get_db)):
+@cache(expire=600)
+async def get_issuer(request: Request, issuer_id: int, db: AsyncSession = Depends(get_db)):
     """銘柄詳細（基本情報）を取得"""
     issuer = crud.get_issuer_by_id(db, issuer_id)
     if not issuer:
@@ -283,7 +294,8 @@ def get_issuer(request: Request, issuer_id: int, db: Session = Depends(get_db)):
 
 @app.get("/api/issuers/{issuer_id}/ownerships", response_model=schemas.IssuerOwnershipResponse)
 @limiter.limit("50/minute")
-def get_issuer_ownerships(request: Request, issuer_id: int, db: Session = Depends(get_db)):
+@cache(expire=900)
+async def get_issuer_ownerships(request: Request, issuer_id: int, db: AsyncSession = Depends(get_db)):
     """銘柄を保有している投資家一覧を取得"""
     issuer = crud.get_issuer_by_id(db, issuer_id)
     if not issuer:
@@ -307,8 +319,9 @@ def get_issuer_ownerships(request: Request, issuer_id: int, db: Session = Depend
 
 @app.get("/api/filers/{filer_id}/filings", response_model=list[schemas.FilingResponse])
 @limiter.limit("50/minute")
-def get_filings_by_filer(
-    request: Request, filer_id: int, limit: int = 100, db: Session = Depends(get_db)
+@cache(expire=900)
+async def get_filings_by_filer(
+    request: Request, filer_id: int, limit: int = 100, db: AsyncSession = Depends(get_db)
 ):
     """提出者の報告書一覧を取得"""
     filer = crud.get_filer_by_id(db, filer_id)
@@ -339,8 +352,9 @@ def get_filings_by_filer(
 
 @app.get("/api/filers/{filer_id}/issuers/{issuer_id}/history")
 @limiter.limit("50/minute")
-def get_issuer_history(
-    request: Request, filer_id: int, issuer_id: int, db: Session = Depends(get_db)
+@cache(expire=900)
+async def get_issuer_history(
+    request: Request, filer_id: int, issuer_id: int, db: AsyncSession = Depends(get_db)
 ):
     """銘柄の報告書履歴を取得"""
     from backend.models import HoldingDetail
