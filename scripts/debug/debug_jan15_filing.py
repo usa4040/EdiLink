@@ -5,9 +5,9 @@
 特定の書類が見つからない場合の原因調査に使用します。
 """
 
-import requests
 import os
-import sys
+
+import requests
 from dotenv import load_dotenv
 
 # .env読み込み
@@ -18,14 +18,14 @@ EDINET_API_BASE = "https://disclosure.edinet-fsa.go.jp/api/v2"
 
 def check_filings_by_keywords(target_date_str="2026-01-15"):
     print(f"Checking ALL filings for {target_date_str}...")
-    
+
     url = f"{EDINET_API_BASE}/documents.json"
     params = {
         "date": target_date_str,
         "type": 2,
         "Subscription-Key": API_KEY
     }
-    
+
     try:
         res = requests.get(url, params=params, timeout=10)
         if res.status_code == 200:
@@ -37,23 +37,23 @@ def check_filings_by_keywords(target_date_str="2026-01-15"):
                     doc_desc = doc.get("docDescription", "")
                     sec_code = doc.get("secCode", "")
                     edinet_code = doc.get("edinetCode", "")
-                    
+
                     # キーワードチェック
                     is_match = False
                     reason = []
-                    
+
                     if "光通信" in filer_name:
                         is_match = True
                         reason.append("FilerName Match")
-                    
+
                     if "東京エネシス" in doc_desc or "1945" in str(sec_code):
                         is_match = True
                         reason.append("Target Issue Match")
-                        
-                    if "E04948" == edinet_code:
+
+                    if edinet_code == "E04948":
                         is_match = True
                         reason.append("EdinetCode Match")
-                    
+
                     if is_match:
                         print(f"\n[MATCH] {filer_name} ({edinet_code})")
                         print(f"  DocID: {doc.get('docID')}")
@@ -62,7 +62,7 @@ def check_filings_by_keywords(target_date_str="2026-01-15"):
                         print(f"  Ordinance: {doc.get('ordinanceCode')}")
                         print(f"  Reason: {', '.join(reason)}")
                         count += 1
-                
+
                 print(f"\nTotal matches found: {count}")
             else:
                 print("No results field in response")
