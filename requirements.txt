@@ -37,6 +37,17 @@ tzdata==2025.3
 urllib3==2.6.2
 uvicorn==0.39.0
 
+# Database dependencies (async PostgreSQL)
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# Cache dependencies
+redis==5.0.1
+fastapi-cache2==0.2.1
+
+# Migration dependencies
+alembic==1.13.1
+
 # Development dependencies
 ruff==0.9.0
 mypy==1.14.1

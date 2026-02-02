@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # PostgreSQL（データ永続化）
+  postgres:
+    image: postgres:15-alpine
+    container_name: edinet-postgres
+    environment:
+      POSTGRES_DB: edinet
+      POSTGRES_USER: edinet
+      POSTGRES_PASSWORD: edinet
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edinet"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edinet-network
+
+  # Redis（キャッシュ、メモリのみ）
+  redis:
+    image: redis:7-alpine
+    container_name: edinet-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - edinet-network
+
+  # バックエンド
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: edinet-backend
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://edinet:edinet@postgres:5432/edinet
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=1
+    volumes:
+      - ./backend:/app/backend
+      - ./data:/app/data
+      - ./scripts:/app/scripts
+      - ./alembic:/app/alembic
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Waiting for PostgreSQL...' &&
+        sleep 3 &&
+        echo 'Running migrations...' &&
+        alembic upgrade head &&
+        echo 'Checking data migration...' &&
+        python scripts/migrate_sqlite_to_postgres.py &&
+        echo 'Starting application...' &&
+        uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+    networks:
+      - edinet-network
+
+volumes:
+  postgres_data:
+
+networks:
+  edinet-network:
+    driver: bridge
