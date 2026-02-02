@@ -1,10 +1,18 @@
-import os
-from datetime import datetime
+"""
+SQLAlchemy 2.0スタイルのデータベースモデル
+非同期PostgreSQL対応
+"""
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base, relationship
+from datetime import datetime, timezone
+from typing import List, Optional
 
-Base = declarative_base()
+from sqlalchemy import ForeignKey, String, DateTime, Integer, Float, Boolean
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    """SQLAlchemy 2.0のDeclarativeBase"""
+    pass
 
 
 class Filer(Base):
@@ -12,29 +20,38 @@ class Filer(Base):
 
     __tablename__ = "filers"
 
-    id = Column(Integer, primary_key=True, index=True)
-    edinet_code = Column(
-        String, nullable=False, index=True
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    edinet_code: Mapped[str] = mapped_column(
+        String(10), nullable=False, index=True
     )  # 代表的なEDINETコード（DBスキーマ互換）
-    name = Column(String, nullable=False)  # 株式会社光通信
-    sec_code = Column(String, nullable=True)  # 94350（代表的な証券コード）
-    jcn = Column(String, nullable=True)  # 法人番号
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)  # 株式会社光通信
+    sec_code: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # 94350
+    jcn: Mapped[Optional[str]] = mapped_column(String(13), nullable=True)  # 法人番号
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
+    )
 
     # リレーション
-    filer_codes = relationship("FilerCode", back_populates="filer", cascade="all, delete-orphan")
-    filings = relationship("Filing", back_populates="filer")
+    filer_codes: Mapped[List["FilerCode"]] = relationship(
+        back_populates="filer",
+        cascade="all, delete-orphan"
+    )
+    filings: Mapped[List["Filing"]] = relationship(back_populates="filer")
 
     @property
-    def primary_edinet_code(self):
+    def primary_edinet_code(self) -> Optional[str]:
         """代表的なEDINETコードを返す"""
         if self.filer_codes:
             return self.filer_codes[0].edinet_code
         return None
 
     @property
-    def edinet_codes(self):
+    def edinet_codes(self) -> List[str]:
         """すべてのEDINETコードをリストで返す"""
         return [fc.edinet_code for fc in self.filer_codes]
 
@@ -44,13 +61,27 @@ class FilerCode(Base):
 
     __tablename__ = "filer_codes"
 
-    id = Column(Integer, primary_key=True, index=True)
-    filer_id = Column(Integer, ForeignKey("filers.id"), nullable=False)
-    edinet_code = Column(String, unique=True, nullable=False, index=True)  # E04948
-    name = Column(String, nullable=True)  # このコードでの提出者名（異なる場合）
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    filer_id: Mapped[int] = mapped_column(
+        ForeignKey("filers.id"),
+        nullable=False
+    )
+    edinet_code: Mapped[str] = mapped_column(
+        String(10),
+        unique=True,
+        nullable=False,
+        index=True
+    )  # E04948
+    name: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True
+    )  # このコードでの提出者名（異なる場合）
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc)
+    )
 
-    filer = relationship("Filer", back_populates="filer_codes")
+    filer: Mapped["Filer"] = relationship(back_populates="filer_codes")
 
 
 class Issuer(Base):
@@ -58,14 +89,32 @@ class Issuer(Base):
 
     __tablename__ = "issuers"
 
-    id = Column(Integer, primary_key=True, index=True)
-    edinet_code = Column(String, unique=True, nullable=False, index=True)  # 発行体のEDINETコード
-    name = Column(String, nullable=True)  # 発行体名（銘柄名）
-    sec_code = Column(String, nullable=True)  # 証券コード
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    edinet_code: Mapped[str] = mapped_column(
+        String(10),
+        unique=True,
+        nullable=False,
+        index=True
+    )  # 発行体のEDINETコード
+    name: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True
+    )  # 発行体名（銘柄名）
+    sec_code: Mapped[Optional[str]] = mapped_column(
+        String(10),
+        nullable=True
+    )  # 証券コード
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
+    )
 
-    filings = relationship("Filing", back_populates="issuer")
+    filings: Mapped[List["Filing"]] = relationship(back_populates="issuer")
 
 
 class Filing(Base):
@@ -73,22 +122,50 @@ class Filing(Base):
 
     __tablename__ = "filings"
 
-    id = Column(Integer, primary_key=True, index=True)
-    doc_id = Column(String, unique=True, nullable=False, index=True)  # S100XBWO
-    filer_id = Column(Integer, ForeignKey("filers.id"), nullable=False)
-    issuer_id = Column(Integer, ForeignKey("issuers.id"), nullable=True)
-    doc_type = Column(String, nullable=True)  # 大量保有報告書/変更報告書
-    doc_description = Column(String, nullable=True)  # 詳細な説明
-    submit_date = Column(DateTime, nullable=True)
-    parent_doc_id = Column(String, nullable=True)  # 変更元の報告書ID
-    csv_flag = Column(Boolean, default=False)
-    xbrl_flag = Column(Boolean, default=False)
-    pdf_flag = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    doc_id: Mapped[str] = mapped_column(
+        String(20),
+        unique=True,
+        nullable=False,
+        index=True
+    )  # S100XBWO
+    filer_id: Mapped[int] = mapped_column(
+        ForeignKey("filers.id"),
+        nullable=False
+    )
+    issuer_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("issuers.id"),
+        nullable=True
+    )
+    doc_type: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True
+    )  # 大量保有報告書/変更報告書
+    doc_description: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True
+    )  # 詳細な説明
+    submit_date: Mapped[Optional[datetime]] = mapped_column(
+        DateTime,
+        nullable=True
+    )
+    parent_doc_id: Mapped[Optional[str]] = mapped_column(
+        String(20),
+        nullable=True
+    )  # 変更元の報告書ID
+    csv_flag: Mapped[bool] = mapped_column(Boolean, default=False)
+    xbrl_flag: Mapped[bool] = mapped_column(Boolean, default=False)
+    pdf_flag: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc)
+    )
 
-    filer = relationship("Filer", back_populates="filings")
-    issuer = relationship("Issuer", back_populates="filings")
-    holding_details = relationship("HoldingDetail", back_populates="filing")
+    filer: Mapped["Filer"] = relationship(back_populates="filings")
+    issuer: Mapped[Optional["Issuer"]] = relationship(back_populates="filings")
+    holding_details: Mapped[List["HoldingDetail"]] = relationship(
+        back_populates="filing"
+    )
 
 
 class HoldingDetail(Base):
@@ -96,28 +173,26 @@ class HoldingDetail(Base):
 
     __tablename__ = "holding_details"
 
-    id = Column(Integer, primary_key=True, index=True)
-    filing_id = Column(Integer, ForeignKey("filings.id"), nullable=False)
-    shares_held = Column(Integer, nullable=True)  # 保有株数
-    holding_ratio = Column(Float, nullable=True)  # 保有比率（%）
-    purpose = Column(String, nullable=True)  # 保有目的
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    filing_id: Mapped[int] = mapped_column(
+        ForeignKey("filings.id"),
+        nullable=False
+    )
+    shares_held: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True
+    )  # 保有株数
+    holding_ratio: Mapped[Optional[float]] = mapped_column(
+        Float,
+        nullable=True
+    )  # 保有比率（%）
+    purpose: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True
+    )  # 保有目的
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc)
+    )
 
-    filing = relationship("Filing", back_populates="holding_details")
-
-
-# データベース接続用のエンジン作成関数
-def get_engine(db_path: str = "data/edinet.db"):
-    # ディレクトリが存在しない場合は作成
-    db_dir = os.path.dirname(db_path)
-    if db_dir and not os.path.exists(db_dir):
-        os.makedirs(db_dir, exist_ok=True)
-
-    return create_engine(f"sqlite:///{db_path}", echo=False)
-
-
-def init_db(db_path: str = "data/edinet.db"):
-    """データベースとテーブルを初期化"""
-    engine = get_engine(db_path)
-    Base.metadata.create_all(bind=engine)
-    return engine
+    filing: Mapped["Filing"] = relationship(back_populates="holding_details")

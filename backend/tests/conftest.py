@@ -1,93 +1,114 @@
+"""
+非同期テスト設定（PostgreSQL対応）
+"""
+
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import pytest_asyncio
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.pool import NullPool
 
 # プロジェクトルートをパスに追加
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from sqlalchemy.pool import StaticPool
-
-from backend.database import get_db
+from backend.database import get_db, async_engine
 from backend.main import app
-from backend.models import Base, Filer, FilerCode, Filing, HoldingDetail, Issuer
+from backend.models import Base
 
-# テスト用のインメモリデータベース
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
+# テスト用の非同期データベースエンジン
+# 環境変数から取得、またはデフォルトのPostgreSQL
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://edinet:edinet@localhost:5432/edinet_test"
 )
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# 非同期エンジン（テスト用）
+test_async_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    echo=False,
+    future=True,
+    poolclass=NullPool,  # テスト時は接続プールを使用しない
+)
+
+# 非同期セッションファクトリ
+TestingSessionLocal = async_sessionmaker(
+    test_async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
 
 
-@pytest.fixture(scope="function")
-def db():
-    """テストごとにクリーンなDBセッションを提供"""
-    Base.metadata.create_all(bind=engine)
-    session = TestingSessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
-        Base.metadata.drop_all(bind=engine)
+@pytest_asyncio.fixture(scope="function")
+async def db():
+    """テストごとにクリーンな非同期DBセッションを提供"""
+    # テーブル作成
+    async with test_async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    # セッション作成
+    async with TestingSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.rollback()
+    
+    # テーブル削除
+    async with test_async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture(scope="function")
-def client(db):
-    """FastAPIのテストクライアントを提供。DBの依存性をオーバーライド"""
-
-    def override_get_db():
+@pytest_asyncio.fixture(scope="function")
+async def client(db):
+    """FastAPIの非同期テストクライアントを提供。DBの依存性をオーバーライド"""
+    
+    async def override_get_db():
         try:
             yield db
         finally:
             pass
+    
+    app.dependency_overrides[get_db] = override_get_db
+    
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
+    
+    app.dependency_overrides.clear()
 
+
+# 後方互換性のための同期版フィクスチャ（移行期間中）
+@pytest.fixture(scope="function")
+def sync_db():
+    """同期版DBセッション（既存テストの互換性用）"""
+    from backend.database import sync_engine, SyncSessionLocal
+    
+    from backend.models import Base as SyncBase
+    SyncBase.metadata.create_all(bind=sync_engine)
+    session = SyncSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+        SyncBase.metadata.drop_all(bind=sync_engine)
+
+
+@pytest.fixture(scope="function")
+def sync_client(sync_db):
+    """同期版テストクライアント（既存テストの互換性用）"""
+    from fastapi.testclient import TestClient
+    
+    def override_get_db():
+        try:
+            yield sync_db
+        finally:
+            pass
+    
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
-
-
-@pytest.fixture
-def sample_data(db):
-    """基本的なサンプルデータを作成"""
-    filer = Filer(edinet_code="E00000", name="テスト提出者", sec_code="90000")
-    db.add(filer)
-    db.flush()
-
-    filer_code = FilerCode(filer_id=filer.id, edinet_code="E00000", name="テスト提出者")
-    db.add(filer_code)
-
-    issuer = Issuer(edinet_code="E11111", name="テスト発行体", sec_code="10010")
-    db.add(issuer)
-    db.flush()
-
-    filing = Filing(
-        doc_id="S_TEST_01",
-        filer_id=filer.id,
-        issuer_id=issuer.id,
-        doc_description="大量保有報告書",
-        submit_date=datetime.now(),
-        csv_flag=True,
-    )
-    db.add(filing)
-    db.flush()
-
-    holding = HoldingDetail(filing_id=filing.id, shares_held=1000000, holding_ratio=5.50)
-    db.add(holding)
-    db.commit()
-
-    return {
-        "filer": filer,
-        "filer_code": filer_code,
-        "issuer": issuer,
-        "filing": filing,
-        "holding": holding,
-    }
