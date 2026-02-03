@@ -68,7 +68,8 @@ async def get_db_session():
 
 # 後方互換性のための同期版（スクリプト移行用）
 # 移行完了後に削除予定
-from contextlib import contextmanager
+from contextlib import contextmanager  # noqa: E402
+
 from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 
