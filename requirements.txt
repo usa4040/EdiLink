@@ -37,9 +37,10 @@ tzdata==2025.3
 urllib3==2.6.2
 uvicorn==0.39.0
 
-# Database dependencies (async PostgreSQL)
+# Database dependencies (async PostgreSQL + SQLite)
 asyncpg==0.29.0
 psycopg2-binary==2.9.9
+aiosqlite==0.20.0
 
 # Cache dependencies
 redis==5.0.1
