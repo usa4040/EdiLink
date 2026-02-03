@@ -143,7 +143,7 @@ async def get_filers(
     db: AsyncSession = Depends(get_db),
 ):
     """提出者一覧を取得（ページネーション対応）"""
-    data = crud.get_filers(db, skip=skip, limit=limit, search=search)
+    data = await crud.get_filers(db, skip=skip, limit=limit, search=search)
 
     result = []
     for item in data["items"]:
@@ -169,11 +169,11 @@ async def get_filers(
 @cache(expire=600)
 async def get_filer(request: Request, filer_id: int, db: AsyncSession = Depends(get_db)):
     """提出者詳細を取得"""
-    filer = crud.get_filer_by_id(db, filer_id)
+    filer = await crud.get_filer_by_id(db, filer_id)
     if not filer:
         raise HTTPException(status_code=404, detail="Filer not found")
 
-    stats = crud.get_filer_stats(db, filer.id)
+    stats = await crud.get_filer_stats(db, filer.id)
     return schemas.FilerResponse(
         id=filer.id,
         edinet_code=filer.primary_edinet_code,
@@ -192,11 +192,11 @@ async def create_filer(
     request: Request, filer: schemas.FilerCreate, db: AsyncSession = Depends(get_db)
 ):
     """新しい提出者を追加"""
-    existing = crud.get_filer_by_edinet_code(db, filer.edinet_code)
+    existing = await crud.get_filer_by_edinet_code(db, filer.edinet_code)
     if existing:
         raise HTTPException(status_code=400, detail="Filer already exists")
 
-    new_filer = crud.create_filer(db, filer.edinet_code, filer.name, filer.sec_code)
+    new_filer = await crud.create_filer(db, filer.edinet_code, filer.name, filer.sec_code)
     return schemas.FilerResponse(
         id=new_filer.id,
         edinet_code=new_filer.primary_edinet_code,
@@ -224,11 +224,11 @@ async def get_issuers_by_filer(
     db: AsyncSession = Depends(get_db),
 ):
     """提出者が保有している銘柄一覧を取得（ページネーション対応）"""
-    filer = crud.get_filer_by_id(db, filer_id)
+    filer = await crud.get_filer_by_id(db, filer_id)
     if not filer:
         raise HTTPException(status_code=404, detail="Filer not found")
 
-    data = crud.get_issuers_by_filer(db, filer_id, skip=skip, limit=limit, search=search)
+    data = await crud.get_issuers_by_filer(db, filer_id, skip=skip, limit=limit, search=search)
 
     result = []
     for item in data["items"]:
@@ -260,7 +260,7 @@ async def get_issuers(
     db: AsyncSession = Depends(get_db),
 ):
     """銘柄一覧を取得（ページネーション・検索対応）"""
-    data = crud.get_issuers(db, skip=skip, limit=limit, search=search)
+    data = await crud.get_issuers(db, skip=skip, limit=limit, search=search)
 
     result = []
     for issuer in data["items"]:
@@ -282,7 +282,7 @@ async def get_issuers(
 @cache(expire=600)
 async def get_issuer(request: Request, issuer_id: int, db: AsyncSession = Depends(get_db)):
     """銘柄詳細（基本情報）を取得"""
-    issuer = crud.get_issuer_by_id(db, issuer_id)
+    issuer = await crud.get_issuer_by_id(db, issuer_id)
     if not issuer:
         raise HTTPException(status_code=404, detail="Issuer not found")
     # 詳細情報（latest_filing_dateなど）は今回は省略、必要ならget_filings等から取得
@@ -301,11 +301,11 @@ async def get_issuer_ownerships(
     request: Request, issuer_id: int, db: AsyncSession = Depends(get_db)
 ):
     """銘柄を保有している投資家一覧を取得"""
-    issuer = crud.get_issuer_by_id(db, issuer_id)
+    issuer = await crud.get_issuer_by_id(db, issuer_id)
     if not issuer:
         raise HTTPException(status_code=404, detail="Issuer not found")
 
-    ownerships = crud.get_issuer_ownerships(db, issuer_id)
+    ownerships = await crud.get_issuer_ownerships(db, issuer_id)
 
     return {
         "issuer": schemas.IssuerResponse(
@@ -328,11 +328,11 @@ async def get_filings_by_filer(
     request: Request, filer_id: int, limit: int = 100, db: AsyncSession = Depends(get_db)
 ):
     """提出者の報告書一覧を取得"""
-    filer = crud.get_filer_by_id(db, filer_id)
+    filer = await crud.get_filer_by_id(db, filer_id)
     if not filer:
         raise HTTPException(status_code=404, detail="Filer not found")
 
-    filings = crud.get_filings_by_filer(db, filer_id, limit)
+    filings = await crud.get_filings_by_filer(db, filer_id, limit)
     result = []
     for filing in filings:
         result.append(
@@ -363,15 +363,15 @@ async def get_issuer_history(
     """銘柄の報告書履歴を取得"""
     from backend.models import HoldingDetail
 
-    filer = crud.get_filer_by_id(db, filer_id)
-    issuer = crud.get_issuer_by_id(db, issuer_id)
+    filer = await crud.get_filer_by_id(db, filer_id)
+    issuer = await crud.get_issuer_by_id(db, issuer_id)
 
     if not filer:
         raise HTTPException(status_code=404, detail="Filer not found")
     if not issuer:
         raise HTTPException(status_code=404, detail="Issuer not found")
 
-    filings = crud.get_filings_by_issuer_and_filer(db, issuer_id, filer_id)
+    filings = await crud.get_filings_by_issuer_and_filer(db, issuer_id, filer_id)
 
     # N+1問題解消: 全HoldingDetailを一括取得
     filing_ids = [f.id for f in filings]
