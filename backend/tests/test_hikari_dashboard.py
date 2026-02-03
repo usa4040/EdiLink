@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from backend import crud
 from backend.models import Filer, Filing, HoldingDetail, Issuer

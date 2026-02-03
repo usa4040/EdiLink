@@ -98,7 +98,8 @@ def sync_db():
 @pytest.fixture(scope="function")
 def sample_data(db):
     """基本的なサンプルデータを作成"""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
+
     from backend.models import Filer, FilerCode, Filing, HoldingDetail, Issuer
 
     filer = Filer(edinet_code="E00000", name="テスト提出者", sec_code="90000")

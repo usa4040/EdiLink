@@ -17,8 +17,7 @@ import requests
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-from backend.database import sync_engine
-from backend.database import SyncSessionLocal
+from backend.database import SyncSessionLocal, sync_engine
 from backend.models import Base, Filer, FilerCode, Filing, Issuer
 
 # .envの読み込み
