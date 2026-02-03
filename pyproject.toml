@@ -51,10 +51,6 @@ module = "backend.models"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "backend.crud"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "backend.update_issuer_names"
 ignore_errors = true
 
