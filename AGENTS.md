@@ -6,40 +6,40 @@ EdiLinkリポジトリで作業するAIエージェント向けのガイドラ�
 
 **EdiLink**は、日本のEDINET（電子開示システム）の開示データを管理するフルスタックアプリケーションです。
 
-- **バックエンド**: Python 3.12, FastAPI, SQLAlchemy (Async/PostgreSQL/SQLite), pytest
-- **フロントエンド**: Next.js 16, React 19, TypeScript 5, Tailwind CSS 4
+- **バックエンド**: Python 3.12, FastAPI, SQLAlchemy 2.0 (Async), Alembic, pytest
+- **フロントエンド**: Next.js 16 (App Router), React 19, TypeScript 5, Tailwind CSS 4, Vitest
+- **データベース**: PostgreSQL (本番/Docker), SQLite (ローカル開発)
+- **インフラ**: Docker Compose
 
 ---
 
-## ビルド・テスト・Lintコマンド
+## 開発環境セットアップ & 起動
 
-### バックエンド (Python)
+### 1. Docker Compose (推奨)
+
+PostgreSQLとRedisを含む完全な環境を起動します。
+
+```bash
+docker-compose up -d
+```
+
+### 2. ローカル開発 (SQLite)
+
+Dockerを使用せず、軽量なSQLite構成で起動します。
+
+#### バックエンド (Python)
 
 ```bash
 # 依存関係インストール
 pip install -r requirements.txt
 
-# すべてのテストを実行
-pytest
-
-# 単一のテストファイルを実行
-pytest backend/tests/test_api.py -v
-
-# 特定のテストケースを実行
-pytest backend/tests/test_api.py::test_get_filers -v
-
-# Lint & 型チェック
-ruff check backend/
-mypy backend/
-
-# ローカルサーバー起動 (開発用: SQLite + キャッシュ無効)
-# 注意: 非同期SQLAlchemyには 'sqlite+aiosqlite' スキームが必要です
+# ローカルサーバー起動 (キャッシュ無効化、非同期SQLite使用)
 export DATABASE_URL=sqlite+aiosqlite:///./data/edinet.db
 export CI=true
 uvicorn backend.main:app --reload --port 8000
 ```
 
-### フロントエンド (Next.js)
+#### フロントエンド (Next.js)
 
 ```bash
 cd frontend
@@ -49,11 +49,34 @@ npm install
 
 # 開発サーバー起動
 npm run dev
+```
 
-# すべてのテストを実行
+---
+
+## テスト・Lint・型チェック
+
+### バックエンド
+
+```bash
+# テスト実行
+pytest
+pytest backend/tests/test_api.py -v
+
+# Lint & フォーマットチェック
+ruff check backend/
+ruff format --check backend/
+
+# 型チェック
+mypy backend/
+```
+
+### フロントエンド
+
+```bash
+cd frontend
+
+# テスト実行
 npm test
-
-# 単一のテストファイルを実行
 npm test -- src/test/Sidebar.test.tsx
 
 # Lint & 型チェック
@@ -63,19 +86,45 @@ npm run typecheck
 
 ---
 
+## プロジェクト構造
+
+```
+/Users/home/project/EdiLink/
+├── backend/           # FastAPIアプリケーション
+│   ├── main.py        # エントリーポイント
+│   ├── models.py      # SQLAlchemyモデル定義
+│   ├── schemas.py     # Pydanticデータスキーマ
+│   ├── crud.py        # DB操作ロジック
+│   ├── database.py    # DB接続設定
+│   ├── sync_edinet.py # データ同期バッチ処理
+│   └── tests/         # pytestテスト
+├── frontend/          # Next.jsアプリケーション
+│   ├── src/app/       # App Routerページ
+│   ├── src/components/# UIコンポーネント
+│   └── src/test/      # Vitestテスト
+├── scripts/           # 運用・分析スクリプト
+│   ├── analysis/      # データ分析・検証用
+│   ├── export/        # CSV出力用
+│   └── maintenance/   # データメンテナンス用
+├── data/              # SQLiteデータベース (edinet.db)
+└── alembic/           # DBマイグレーション設定
+```
+
+---
+
 ## コーディングスタイルガイドライン
 
 ### Python (バックエンド)
 
-- **フォーマット**: `ruff` を使用（`pyproject.toml`設定準拠）。インデントは4スペース。
+- **フォーマット**: `ruff` 準拠。インデントは4スペース。
 - **型ヒント**: 必須。`mypy`でチェック。
   - APIスキーマ: `schemas.py` (Pydantic)
   - DBモデル: `models.py` (SQLAlchemy 2.0 DeclarativeBase)
   - Optional型: `str | None` 形式を使用。
 - **データベース**: 非同期セッション (`AsyncSession`) を使用。
   - N+1問題回避のため `selectinload()` や `joinedload()` を明示的に使用。
-- **命名規則**: 関数/変数 `snake_case`, クラス `PascalCase`.
 - **インポート**: 絶対インポートを使用 (`from backend.models import ...`)。
+- **バッチ実行**: `python -m backend.sync_edinet` のようにモジュールとして実行。
 
 ### TypeScript/JavaScript (フロントエンド)
 
@@ -86,27 +135,6 @@ npm run typecheck
 - **インポート**: `@/` エイリアスを使用 (`import ... from "@/components/..."`)。
 - **Tailwind CSS**: v4を使用。`className` にユーティリティクラスを記述。
   - カスタムスタイルは `src/app/globals.css`。
-
----
-
-## プロジェクト構造
-
-```
-/Users/home/project/EdiLink/
-├── backend/           # FastAPIアプリ
-│   ├── main.py        # エントリーポイント
-│   ├── models.py      # SQLAlchemyモデル定義
-│   ├── schemas.py     # Pydanticデータスキーマ
-│   ├── crud.py        # DB操作ロジック
-│   ├── database.py    # DB接続設定
-│   └── tests/         # pytestテスト
-├── frontend/          # Next.jsアプリ
-│   ├── src/app/       # App Routerページ
-│   ├── src/components/# UIコンポーネント
-│   └── src/test/      # Vitestテスト
-├── data/              # SQLiteデータベース (edinet.db)
-└── scripts/           # ユーティリティスクリプト
-```
 
 ---
 
