@@ -54,6 +54,7 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) 
     """レート制限エラーのハンドラ"""
     return _rate_limit_exceeded_handler(request, exc)
 
+
 # CORS設定（フロントエンドからのアクセスを許可）
 app.add_middleware(
     CORSMiddleware,
