@@ -4,18 +4,18 @@
 指定したコード（例: E04948）に紐づくデータを抽出し、hikari_latest.csvなどを作成します。
 """
 
-import sys
-import os
-import csv
 import argparse
-from datetime import datetime
+import csv
+import os
+import sys
 
 # パス設定
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
 
-from backend.models import FilerCode, Filing, get_engine
 from backend.database import get_db_session
+from backend.models import FilerCode, Filing
+
 
 def export_filer_csv(edinet_code, output_file=None):
     if not output_file:
@@ -49,7 +49,7 @@ def export_filer_csv(edinet_code, output_file=None):
         with open(output_file, 'w', newline='', encoding='utf-8-sig') as f:
             writer = csv.writer(f)
             header = [
-                "doc_id", "submit_date", "doc_type", "doc_description", 
+                "doc_id", "submit_date", "doc_type", "doc_description",
                 "xbrl_flag", "pdf_flag", "csv_flag"
             ]
             writer.writerow(header)
@@ -64,14 +64,14 @@ def export_filer_csv(edinet_code, output_file=None):
                     filing.pdf_flag,
                     filing.csv_flag
                 ])
-        
+
         print(f"Exported {len(filings)} records to {output_file}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Export filings for a filer to CSV")
     parser.add_argument("edinet_code", type=str, help="EDINET Code (e.g., E04948)")
     parser.add_argument("--out", type=str, help="Output CSV filename")
-    
+
     args = parser.parse_args()
-    
+
     export_filer_csv(args.edinet_code, args.out)
