@@ -1,27 +1,30 @@
 """
 CSVファイルをデータベースにインポートするスクリプト
 """
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import pandas as pd
 from datetime import datetime
-from backend.models import Base, Filer, Issuer, Filing, get_engine
+
+import pandas as pd
+
 from backend.database import get_db_session
+from backend.models import Base, Filer, Filing, Issuer, get_engine
 
 
 def import_csv_to_db(csv_path: str):
     """CSVファイルからデータをDBにインポート"""
-    
+
     # データベース初期化
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
-    
+
     # CSV読み込み
     df = pd.read_csv(csv_path)
     print(f"Loaded {len(df)} records from CSV")
-    
+
     with get_db_session() as db:
         # 1. 提出者（Filer）を登録
         filer_codes = df['edinetCode'].unique()
@@ -38,7 +41,7 @@ def import_csv_to_db(csv_path: str):
                 db.add(filer)
                 print(f"Added Filer: {filer.name} ({code})")
         db.flush()
-        
+
         # 2. 発行体（Issuer）を登録
         issuer_codes = df['issuerEdinetCode'].dropna().unique()
         for code in issuer_codes:
@@ -54,23 +57,23 @@ def import_csv_to_db(csv_path: str):
                 db.add(issuer)
                 print(f"Added Issuer: {code}")
         db.flush()
-        
+
         # 3. 報告書（Filing）を登録
         for _, row in df.iterrows():
             doc_id = row['docID']
             existing = db.query(Filing).filter(Filing.doc_id == doc_id).first()
             if existing:
                 continue
-            
+
             # Filerを取得
             filer = db.query(Filer).filter(Filer.edinet_code == row['edinetCode']).first()
-            
+
             # Issuerを取得
             issuer = None
             issuer_code = row.get('issuerEdinetCode')
             if pd.notna(issuer_code) and issuer_code:
                 issuer = db.query(Issuer).filter(Issuer.edinet_code == issuer_code).first()
-            
+
             # 提出日時のパース
             submit_date = None
             if pd.notna(row.get('submitDateTime')):
@@ -78,7 +81,7 @@ def import_csv_to_db(csv_path: str):
                     submit_date = datetime.strptime(str(row['submitDateTime']), '%Y-%m-%d %H:%M:%S')
                 except:
                     pass
-            
+
             filing = Filing(
                 doc_id=doc_id,
                 filer_id=filer.id if filer else None,
@@ -92,13 +95,13 @@ def import_csv_to_db(csv_path: str):
                 pdf_flag=bool(row.get('pdfFlag', 0))
             )
             db.add(filing)
-        
-        print(f"Import completed!")
+
+        print("Import completed!")
 
 
 if __name__ == "__main__":
     csv_path = "hikari_filings_list.csv"
     if len(sys.argv) > 1:
         csv_path = sys.argv[1]
-    
+
     import_csv_to_db(csv_path)

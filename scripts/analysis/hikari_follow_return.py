@@ -7,14 +7,16 @@
 使用方法:
     python scripts/analysis/hikari_follow_return.py
 """
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import sqlite3
+from datetime import datetime, timedelta
+
 import pandas as pd
 import yfinance as yf
-from datetime import datetime, timedelta
 from tqdm import tqdm
 
 
@@ -29,7 +31,7 @@ def get_hikari_bulk_reports():
     doc_type = '010000' のみ対象
     """
     conn = sqlite3.connect(get_db_path())
-    
+
     query = """
         SELECT 
             f.id as filing_id,
@@ -50,10 +52,10 @@ def get_hikari_bulk_reports():
         AND i.sec_code != ''
         ORDER BY f.submit_date ASC
     """
-    
+
     df = pd.read_sql_query(query, conn)
     conn.close()
-    
+
     return df
 
 
@@ -83,7 +85,7 @@ def get_stock_prices(ticker: str, start_date: datetime, end_date: datetime = Non
     """
     if end_date is None:
         end_date = datetime.now()
-    
+
     try:
         stock = yf.Ticker(ticker)
         # 開始日から少し前のデータも取得（翌営業日調整のため）
@@ -101,16 +103,16 @@ def get_open_price_after_date(hist: pd.DataFrame, target_date: datetime) -> tupl
     """
     if hist is None or hist.empty:
         return None, None
-    
+
     # target_date以降のデータをフィルタ
     hist.index = pd.to_datetime(hist.index).tz_localize(None)
     target = pd.Timestamp(target_date.date())
-    
+
     future_data = hist[hist.index >= target]
-    
+
     if future_data.empty:
         return None, None
-    
+
     first_row = future_data.iloc[0]
     return first_row['Open'], future_data.index[0]
 
@@ -122,7 +124,7 @@ def get_current_price(hist: pd.DataFrame) -> tuple:
     """
     if hist is None or hist.empty:
         return None, None
-    
+
     last_row = hist.iloc[-1]
     return last_row['Close'], hist.index[-1]
 
@@ -132,20 +134,20 @@ def calculate_returns(reports_df: pd.DataFrame) -> pd.DataFrame:
     各銘柄のリターンを計算
     """
     results = []
-    
+
     # 重複を除去（同じ銘柄の最初の報告のみ）
     unique_reports = reports_df.drop_duplicates(subset=['sec_code'], keep='first')
-    
+
     print(f"\n{len(unique_reports)}銘柄の株価を取得中...")
-    
+
     for _, row in tqdm(unique_reports.iterrows(), total=len(unique_reports), desc="Processing"):
         ticker = format_ticker(row['sec_code'])
         submit_date = pd.to_datetime(row['submit_date'])
         next_biz_day = get_next_business_day(submit_date)
-        
+
         # 株価データ取得
         hist = get_stock_prices(ticker, next_biz_day)
-        
+
         if hist is None or hist.empty:
             results.append({
                 'submit_date': submit_date,
@@ -161,10 +163,10 @@ def calculate_returns(reports_df: pd.DataFrame) -> pd.DataFrame:
                 'status': '株価取得失敗'
             })
             continue
-        
+
         buy_price, buy_date = get_open_price_after_date(hist, next_biz_day)
         current_price, current_date = get_current_price(hist)
-        
+
         if buy_price is None or current_price is None:
             results.append({
                 'submit_date': submit_date,
@@ -180,9 +182,9 @@ def calculate_returns(reports_df: pd.DataFrame) -> pd.DataFrame:
                 'status': '価格データ不完全'
             })
             continue
-        
+
         return_pct = (current_price - buy_price) / buy_price * 100
-        
+
         results.append({
             'submit_date': submit_date,
             'issuer_name': row['issuer_name'],
@@ -196,33 +198,33 @@ def calculate_returns(reports_df: pd.DataFrame) -> pd.DataFrame:
             'return_pct': round(return_pct, 2),
             'status': 'OK'
         })
-    
+
     return pd.DataFrame(results)
 
 
 def generate_summary(df: pd.DataFrame) -> str:
     """サマリーレポートを生成"""
     ok_df = df[df['status'] == 'OK']
-    
+
     if ok_df.empty:
         return "有効なデータがありません。"
-    
+
     total_count = len(ok_df)
     win_count = len(ok_df[ok_df['return_pct'] > 0])
     lose_count = len(ok_df[ok_df['return_pct'] < 0])
     even_count = len(ok_df[ok_df['return_pct'] == 0])
-    
+
     win_rate = win_count / total_count * 100
     avg_return = ok_df['return_pct'].mean()
     median_return = ok_df['return_pct'].median()
     max_return = ok_df['return_pct'].max()
     min_return = ok_df['return_pct'].min()
     std_return = ok_df['return_pct'].std()
-    
+
     # ベスト・ワースト銘柄
     best = ok_df.loc[ok_df['return_pct'].idxmax()]
     worst = ok_df.loc[ok_df['return_pct'].idxmin()]
-    
+
     summary = f"""
 ================================================================================
   光通信フォロー投資リターン分析レポート
@@ -271,39 +273,39 @@ def main():
     print("=" * 60)
     print("光通信フォロー投資リターン分析")
     print("=" * 60)
-    
+
     # データ取得
     print("\n1. 大量保有報告書を取得中...")
     reports_df = get_hikari_bulk_reports()
     print(f"   取得件数: {len(reports_df)}件")
-    
+
     if reports_df.empty:
         print("エラー: 大量保有報告書が見つかりません。")
         return
-    
+
     # リターン計算
     print("\n2. リターン計算中...")
     results_df = calculate_returns(reports_df)
-    
+
     # 出力ディレクトリ
     exports_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'exports')
     os.makedirs(exports_dir, exist_ok=True)
-    
+
     # CSV出力
     csv_path = os.path.join(exports_dir, 'hikari_follow_returns.csv')
     results_df.to_csv(csv_path, index=False, encoding='utf-8-sig')
     print(f"\n3. CSV出力: {csv_path}")
-    
+
     # サマリー出力
     summary = generate_summary(results_df)
     summary_path = os.path.join(exports_dir, 'hikari_follow_summary.txt')
     with open(summary_path, 'w', encoding='utf-8') as f:
         f.write(summary)
     print(f"   サマリー出力: {summary_path}")
-    
+
     # コンソール出力
     print(summary)
-    
+
     print("\n完了!")
 
 
