@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Sequence, TypedDict, cast
+
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -5,9 +8,61 @@ from sqlalchemy.orm import joinedload, selectinload
 from backend.models import Filer, FilerCode, Filing, HoldingDetail, Issuer
 
 
+class FilerWithStats(TypedDict):
+    filer: Filer
+    filing_count: int
+    issuer_count: int
+    latest_filing_date: datetime | None
+
+
+class FilerListResponse(TypedDict):
+    items: Sequence[FilerWithStats]
+    total: int
+    skip: int
+    limit: int
+
+
+class FilerStats(TypedDict):
+    filing_count: int
+    issuer_count: int
+    latest_filing_date: datetime | None
+
+
+class IssuerWithStats(TypedDict):
+    issuer: Issuer
+    latest_filing_date: datetime | None
+    filing_count: int
+    latest_ratio: float | None
+    latest_purpose: str | None
+    ratio_change: float | None
+
+
+class IssuerListResponse(TypedDict):
+    items: Sequence[IssuerWithStats]
+    total: int
+    skip: int
+    limit: int
+
+
+class PaginatedIssuers(TypedDict):
+    items: Sequence[Issuer]
+    total: int
+    skip: int
+    limit: int
+
+
+class OwnershipInfo(TypedDict):
+    filer_id: int
+    filer_name: str
+    latest_submit_date: datetime | None
+    shares_held: int | None
+    holding_ratio: float | None
+    purpose: str | None
+
+
 async def get_filers(
     db: AsyncSession, skip: int = 0, limit: int = 50, search: str | None = None
-) -> dict:
+) -> FilerListResponse:
     """提出者をページネーション付きで取得（統計情報も含む）"""
     # ベースクエリの構築
     base_stmt = select(Filer)
@@ -56,7 +111,7 @@ async def get_filers(
     result = await db.execute(stmt)
     rows = result.all()
 
-    filers = []
+    filers: list[FilerWithStats] = []
     for filer, filing_count, issuer_count, latest_filing_date in rows:
         filers.append(
             {
@@ -74,7 +129,7 @@ async def get_filer_by_id(db: AsyncSession, filer_id: int) -> Filer | None:
     """IDで提出者を取得 (filer_codesをEager Loading)"""
     stmt = select(Filer).where(Filer.id == filer_id).options(selectinload(Filer.filer_codes))
     result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    return cast(Filer | None, result.scalar_one_or_none())
 
 
 async def get_filer_by_edinet_code(db: AsyncSession, edinet_code: str) -> Filer | None:
@@ -86,7 +141,7 @@ async def get_filer_by_edinet_code(db: AsyncSession, edinet_code: str) -> Filer 
     )
     result = await db.execute(stmt)
     filer_code = result.scalar_one_or_none()
-    return filer_code.filer if filer_code else None
+    return cast(Filer | None, filer_code.filer if filer_code else None)
 
 
 async def create_filer(
@@ -107,7 +162,7 @@ async def create_filer(
 
 async def get_issuers_by_filer(
     db: AsyncSession, filer_id: int, skip: int = 0, limit: int = 50, search: str | None = None
-) -> dict:
+) -> IssuerListResponse:
     """提出者が保有している発行体（銘柄）一覧をページネーション付きで取得"""
     # 各発行体について、最新の報告書情報を取得
     subquery = (
@@ -175,7 +230,7 @@ async def get_issuers_by_filer(
         }
 
     # 結果を構築
-    issuer_data = []
+    issuer_data: list[IssuerWithStats] = []
     for issuer, latest_date, filing_count in rows:
         holding_info = holdings_map.get(issuer.id, {})
         latest_ratio = holding_info.get("ratio")
@@ -197,7 +252,7 @@ async def get_issuers_by_filer(
 
 async def get_issuers(
     db: AsyncSession, skip: int = 0, limit: int = 50, search: str | None = None
-) -> dict:
+) -> PaginatedIssuers:
     """銘柄一覧をページネーション付きで取得"""
     base_stmt = select(Issuer)
 
@@ -228,12 +283,12 @@ async def get_issuer_by_id(db: AsyncSession, issuer_id: int) -> Issuer | None:
     """IDで発行体を取得"""
     stmt = select(Issuer).where(Issuer.id == issuer_id)
     result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    return cast(Issuer | None, result.scalar_one_or_none())
 
 
 async def get_filings_by_issuer_and_filer(
     db: AsyncSession, issuer_id: int, filer_id: int
-) -> list[Filing]:
+) -> Sequence[Filing]:
     """特定の発行体・提出者の報告書履歴を取得 (関連データをEager Loading)"""
     stmt = (
         select(Filing)
@@ -250,7 +305,7 @@ async def get_filings_by_issuer_and_filer(
     return list(result.scalars().all())
 
 
-async def get_filings_by_filer(db: AsyncSession, filer_id: int, limit: int = 100) -> list[Filing]:
+async def get_filings_by_filer(db: AsyncSession, filer_id: int, limit: int = 100) -> Sequence[Filing]:
     """提出者のすべての報告書を取得 (issuerとholding_detailsをEager Loading)"""
     stmt = (
         select(Filing)
@@ -263,7 +318,7 @@ async def get_filings_by_filer(db: AsyncSession, filer_id: int, limit: int = 100
     return list(result.scalars().all())
 
 
-async def get_filer_stats(db: AsyncSession, filer_id: int) -> dict:
+async def get_filer_stats(db: AsyncSession, filer_id: int) -> FilerStats:
     """提出者の統計情報を取得"""
     filing_count_stmt = select(func.count(Filing.id)).where(Filing.filer_id == filer_id)
     filing_count_result = await db.execute(filing_count_stmt)
@@ -293,7 +348,7 @@ async def get_filer_stats(db: AsyncSession, filer_id: int) -> dict:
     }
 
 
-async def get_issuer_ownerships(db: AsyncSession, issuer_id: int) -> list[dict]:
+async def get_issuer_ownerships(db: AsyncSession, issuer_id: int) -> Sequence[OwnershipInfo]:
     """
     指定された銘柄を保有している投資家の最新状況を取得
     """
@@ -327,7 +382,7 @@ async def get_issuer_ownerships(db: AsyncSession, issuer_id: int) -> list[dict]:
     result = await db.execute(stmt)
     rows = result.all()
 
-    ownerships = []
+    ownerships: list[OwnershipInfo] = []
     for row in rows:
         # Pydanticモデルではなく辞書で返す（呼び出し元で整形）
         ownerships.append(
