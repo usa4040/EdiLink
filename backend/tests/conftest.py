@@ -7,6 +7,7 @@ import sys
 
 import pytest
 import pytest_asyncio
+import httpx
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -71,7 +72,7 @@ async def client(db):
 
     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
     app.dependency_overrides.clear()
@@ -93,8 +94,8 @@ def sync_db():
         SyncBase.metadata.drop_all(bind=sync_engine)
 
 
-@pytest.fixture(scope="function")
-def sample_data(db):
+@pytest_asyncio.fixture(scope="function")
+async def sample_data(db):
     """基本的なサンプルデータを作成"""
     from datetime import UTC, datetime
 
@@ -102,14 +103,14 @@ def sample_data(db):
 
     filer = Filer(edinet_code="E00000", name="テスト提出者", sec_code="90000")
     db.add(filer)
-    db.flush()
+    await db.flush()
 
     filer_code = FilerCode(filer_id=filer.id, edinet_code="E00000", name="テスト提出者")
     db.add(filer_code)
 
     issuer = Issuer(edinet_code="E11111", name="テスト発行体", sec_code="10010")
     db.add(issuer)
-    db.flush()
+    await db.flush()
 
     filing = Filing(
         doc_id="S_TEST_01",
@@ -120,10 +121,11 @@ def sample_data(db):
         csv_flag=True,
     )
     db.add(filing)
-    db.flush()
+    await db.flush()
 
     holding = HoldingDetail(filing_id=filing.id, shares_held=1000000, holding_ratio=5.50)
     db.add(holding)
+    await db.commit()
 
     return {
         "filer": filer,
