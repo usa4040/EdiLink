@@ -306,7 +306,9 @@ async def get_filings_by_issuer_and_filer(
     return list(result.scalars().all())
 
 
-async def get_filings_by_filer(db: AsyncSession, filer_id: int, limit: int = 100) -> Sequence[Filing]:
+async def get_filings_by_filer(
+    db: AsyncSession, filer_id: int, limit: int = 100
+) -> Sequence[Filing]:
     """提出者のすべての報告書を取得 (issuerとholding_detailsをEager Loading)"""
     stmt = (
         select(Filing)
