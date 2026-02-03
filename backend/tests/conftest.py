@@ -96,6 +96,46 @@ def sync_db():
 
 
 @pytest.fixture(scope="function")
+def sample_data(db):
+    """基本的なサンプルデータを作成"""
+    from datetime import datetime, UTC
+    from backend.models import Filer, FilerCode, Filing, HoldingDetail, Issuer
+
+    filer = Filer(edinet_code="E00000", name="テスト提出者", sec_code="90000")
+    db.add(filer)
+    db.flush()
+
+    filer_code = FilerCode(filer_id=filer.id, edinet_code="E00000", name="テスト提出者")
+    db.add(filer_code)
+
+    issuer = Issuer(edinet_code="E11111", name="テスト発行体", sec_code="10010")
+    db.add(issuer)
+    db.flush()
+
+    filing = Filing(
+        doc_id="S_TEST_01",
+        filer_id=filer.id,
+        issuer_id=issuer.id,
+        doc_description="大量保有報告書",
+        submit_date=datetime.now(UTC),
+        csv_flag=True,
+    )
+    db.add(filing)
+    db.flush()
+
+    holding = HoldingDetail(filing_id=filing.id, shares_held=1000000, holding_ratio=5.50)
+    db.add(holding)
+
+    return {
+        "filer": filer,
+        "filer_code": filer_code,
+        "issuer": issuer,
+        "filing": filing,
+        "holding": holding,
+    }
+
+
+@pytest.fixture(scope="function")
 def sync_client(sync_db):
     """同期版テストクライアント（既存テストの互換性用）"""
     from fastapi.testclient import TestClient

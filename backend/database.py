@@ -68,10 +68,31 @@ async def get_db_session():
 
 # 後方互換性のための同期版（スクリプト移行用）
 # 移行完了後に削除予定
+from contextlib import contextmanager
 from sqlalchemy import create_engine  # noqa: E402
-from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 
 # SQLite用の同期エンジン（データ移行時のみ使用）
 _sqlite_url = os.getenv("SQLITE_URL", "sqlite:///data/edinet.db")
 sync_engine = create_engine(_sqlite_url, connect_args={"check_same_thread": False})
 SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
+
+
+@contextmanager
+def get_sync_db_session():
+    """
+    スクリプト用の同期コンテキストマネージャ
+
+    Usage:
+        with get_sync_db_session() as db:
+            result = db.execute(select(Filer))
+    """
+    session: Session = SyncSessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()

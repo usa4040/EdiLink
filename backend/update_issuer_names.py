@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
-from backend.database import get_db_session
+from backend.database import get_sync_db_session
 from backend.models import Issuer
 
 
@@ -51,7 +51,7 @@ def update_issuer_names(csv_path: str):
     print(f"Loaded {len(edinet_to_info)} EDINET codes from CSV")
 
     # DBのIssuerを更新
-    with get_db_session() as db:
+    with get_sync_db_session() as db:
         issuers = db.query(Issuer).all()
         updated_count = 0
 
