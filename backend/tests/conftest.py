@@ -21,8 +21,7 @@ from backend.models import Base
 # テスト用の非同期データベースエンジン
 # 環境変数から取得、またはデフォルトのPostgreSQL
 TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://edinet:edinet@localhost:5432/edinet_test"
+    "TEST_DATABASE_URL", "postgresql+asyncpg://edinet:edinet@localhost:5432/edinet_test"
 )
 
 # 非同期エンジン（テスト用）
