@@ -14,7 +14,7 @@ async def test_get_issuers_basic(client, db):
         Issuer(edinet_code="E10003", name="株式会社C", sec_code="1003"),
     ]
     db.add_all(issuers)
-    db.commit()
+    await db.commit()
 
     # 全件取得
     response = await client.get("/api/issuers?limit=10")
@@ -43,7 +43,7 @@ async def test_get_issuers_search(client, db):
         Issuer(edinet_code="E20003", name="Cherry Inc", sec_code="2003"),
     ]
     db.add_all(issuers)
-    db.commit()
+    await db.commit()
 
     # 名前検索 "Apple"
     response = await client.get("/api/issuers?search=Apple")
@@ -85,25 +85,25 @@ async def test_get_issuer_ownerships(client, db):
     # 銘柄作成
     issuer = Issuer(edinet_code="E99999", name="Target Corp", sec_code="9999")
     db.add(issuer)
-    db.flush()
+    await db.flush()
 
     # 投資家A（保有あり）
     filer_a = Filer(edinet_code="E0000A", name="Investor A")
     db.add(filer_a)
-    db.flush()
+    await db.flush()
     # FilerCodeも必要
     db.add(FilerCode(filer_id=filer_a.id, edinet_code="E0000A", name="Investor A"))
 
     # 投資家B（保有あり）
     filer_b = Filer(edinet_code="E0000B", name="Investor B")
     db.add(filer_b)
-    db.flush()
+    await db.flush()
     db.add(FilerCode(filer_id=filer_b.id, edinet_code="E0000B", name="Investor B"))
 
     # 投資家C（別の銘柄を保有、今回は対象外）
     filer_c = Filer(edinet_code="E0000C", name="Investor C")
     db.add(filer_c)
-    db.flush()
+    await db.flush()
     db.add(FilerCode(filer_id=filer_c.id, edinet_code="E0000C", name="Investor C"))
 
     # 報告書作成 (A)
@@ -115,7 +115,7 @@ async def test_get_issuer_ownerships(client, db):
         doc_description="Report A",
     )
     db.add(filing_a)
-    db.flush()
+    await db.flush()
     db.add(HoldingDetail(filing_id=filing_a.id, shares_held=100, holding_ratio=5.0))
 
     # 報告書作成 (B) - 古い
@@ -127,7 +127,7 @@ async def test_get_issuer_ownerships(client, db):
         doc_description="Report B Old",
     )
     db.add(filing_b_old)
-    db.flush()
+    await db.flush()
     db.add(HoldingDetail(filing_id=filing_b_old.id, shares_held=200, holding_ratio=10.0))
 
     # 報告書作成 (B) - 最新
@@ -139,10 +139,10 @@ async def test_get_issuer_ownerships(client, db):
         doc_description="Report B New",
     )
     db.add(filing_b_new)
-    db.flush()
+    await db.flush()
     db.add(HoldingDetail(filing_id=filing_b_new.id, shares_held=250, holding_ratio=12.5))
 
-    db.commit()
+    await db.commit()
 
     # APIコール
     response = await client.get(f"/api/issuers/{issuer.id}/ownerships")

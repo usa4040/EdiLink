@@ -15,9 +15,18 @@ from sqlalchemy.pool import NullPool
 # プロジェクトルートをパスに追加
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from backend.cache import init_cache
 from backend.database import get_db
 from backend.main import app
 from backend.models import Base
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def setup_cache():
+    """テストセッション開始時にキャッシュを初期化"""
+    await init_cache()
+    yield
+
 
 # テスト用の非同期データベースエンジン
 # 環境変数から取得、またはデフォルトのSQLite
