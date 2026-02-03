@@ -4,6 +4,7 @@ SQLAlchemy 2.0スタイルのデータベースモデル
 """
 
 from __future__ import annotations
+
 from datetime import UTC, datetime
 
 from sqlalchemy import ForeignKey, String
