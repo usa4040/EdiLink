@@ -5,7 +5,9 @@ from sqlalchemy.orm import joinedload, selectinload
 from backend.models import Filer, FilerCode, Filing, HoldingDetail, Issuer
 
 
-async def get_filers(db: AsyncSession, skip: int = 0, limit: int = 50, search: str | None = None) -> dict:
+async def get_filers(
+    db: AsyncSession, skip: int = 0, limit: int = 50, search: str | None = None
+) -> dict:
     """提出者をページネーション付きで取得（統計情報も含む）"""
     # ベースクエリの構築
     base_stmt = select(Filer)
@@ -69,11 +71,7 @@ async def get_filers(db: AsyncSession, skip: int = 0, limit: int = 50, search: s
 
 async def get_filer_by_id(db: AsyncSession, filer_id: int) -> Filer | None:
     """IDで提出者を取得 (filer_codesをEager Loading)"""
-    stmt = (
-        select(Filer)
-        .where(Filer.id == filer_id)
-        .options(selectinload(Filer.filer_codes))
-    )
+    stmt = select(Filer).where(Filer.id == filer_id).options(selectinload(Filer.filer_codes))
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
@@ -90,7 +88,9 @@ async def get_filer_by_edinet_code(db: AsyncSession, edinet_code: str) -> Filer 
     return filer_code.filer if filer_code else None
 
 
-async def create_filer(db: AsyncSession, edinet_code: str, name: str, sec_code: str | None = None) -> Filer:
+async def create_filer(
+    db: AsyncSession, edinet_code: str, name: str, sec_code: str | None = None
+) -> Filer:
     """新しい提出者を作成（FilerCodeも同時に作成）"""
     filer = Filer(edinet_code=edinet_code, name=name, sec_code=sec_code)
     db.add(filer)
@@ -121,9 +121,8 @@ async def get_issuers_by_filer(
     )
 
     # ベースクエリ
-    base_stmt = (
-        select(Issuer, subquery.c.latest_date, subquery.c.filing_count)
-        .join(subquery, Issuer.id == subquery.c.issuer_id)
+    base_stmt = select(Issuer, subquery.c.latest_date, subquery.c.filing_count).join(
+        subquery, Issuer.id == subquery.c.issuer_id
     )
 
     # 検索フィルタ
@@ -160,14 +159,11 @@ async def get_issuers_by_filer(
         )
 
         # 最新のHoldingDetailを取得
-        holdings_stmt = (
-            select(
-                latest_filing_subq.c.issuer_id,
-                HoldingDetail.holding_ratio,
-                HoldingDetail.purpose,
-            )
-            .join(HoldingDetail, HoldingDetail.filing_id == latest_filing_subq.c.latest_filing_id)
-        )
+        holdings_stmt = select(
+            latest_filing_subq.c.issuer_id,
+            HoldingDetail.holding_ratio,
+            HoldingDetail.purpose,
+        ).join(HoldingDetail, HoldingDetail.filing_id == latest_filing_subq.c.latest_filing_id)
         holdings_result = await db.execute(holdings_stmt)
         latest_holdings = holdings_result.all()
 
@@ -197,7 +193,9 @@ async def get_issuers_by_filer(
     return {"items": issuer_data, "total": total, "skip": skip, "limit": limit}
 
 
-async def get_issuers(db: AsyncSession, skip: int = 0, limit: int = 50, search: str | None = None) -> dict:
+async def get_issuers(
+    db: AsyncSession, skip: int = 0, limit: int = 50, search: str | None = None
+) -> dict:
     """銘柄一覧をページネーション付きで取得"""
     base_stmt = select(Issuer)
 
@@ -231,7 +229,9 @@ async def get_issuer_by_id(db: AsyncSession, issuer_id: int) -> Issuer | None:
     return result.scalar_one_or_none()
 
 
-async def get_filings_by_issuer_and_filer(db: AsyncSession, issuer_id: int, filer_id: int) -> list[Filing]:
+async def get_filings_by_issuer_and_filer(
+    db: AsyncSession, issuer_id: int, filer_id: int
+) -> list[Filing]:
     """特定の発行体・提出者の報告書履歴を取得 (関連データをEager Loading)"""
     stmt = (
         select(Filing)
