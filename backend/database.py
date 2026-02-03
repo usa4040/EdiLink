@@ -9,10 +9,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # 環境変数からデータベースURLを取得（デフォルトはPostgreSQL）
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://edinet:edinet@localhost:5432/edinet"
-)
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://edinet:edinet@localhost:5432/edinet")
 
 # 非同期エンジンの作成
 async_engine = create_async_engine(
