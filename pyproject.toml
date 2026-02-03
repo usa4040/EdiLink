@@ -73,3 +73,8 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = "backend.tests.*"
 ignore_errors = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["backend/tests"]
+pythonpath = ["."]
