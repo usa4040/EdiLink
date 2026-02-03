@@ -58,3 +58,4 @@ types-requests==2.32.4.20260107
 # Security dependencies
 slowapi==0.1.9
 secure==0.3.0
+watchfiles==1.1.1
