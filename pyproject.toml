@@ -46,9 +46,6 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 
 # SQLAlchemyの型問題を一時的に無視
-[[tool.mypy.overrides]]
-module = "backend.models"
-ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "backend.crud"
