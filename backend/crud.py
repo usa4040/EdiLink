@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from datetime import datetime
-from typing import TypedDict, cast
+from typing import TypedDict
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -130,7 +130,7 @@ async def get_filer_by_id(db: AsyncSession, filer_id: int) -> Filer | None:
     """IDで提出者を取得 (filer_codesをEager Loading)"""
     stmt = select(Filer).where(Filer.id == filer_id).options(selectinload(Filer.filer_codes))
     result = await db.execute(stmt)
-    return cast(Filer | None, result.scalar_one_or_none())
+    return result.scalar_one_or_none()
 
 
 async def get_filer_by_edinet_code(db: AsyncSession, edinet_code: str) -> Filer | None:
@@ -142,7 +142,7 @@ async def get_filer_by_edinet_code(db: AsyncSession, edinet_code: str) -> Filer 
     )
     result = await db.execute(stmt)
     filer_code = result.scalar_one_or_none()
-    return cast(Filer | None, filer_code.filer if filer_code else None)
+    return filer_code.filer if filer_code else None
 
 
 async def create_filer(
@@ -284,7 +284,7 @@ async def get_issuer_by_id(db: AsyncSession, issuer_id: int) -> Issuer | None:
     """IDで発行体を取得"""
     stmt = select(Issuer).where(Issuer.id == issuer_id)
     result = await db.execute(stmt)
-    return cast(Issuer | None, result.scalar_one_or_none())
+    return result.scalar_one_or_none()
 
 
 async def get_filings_by_issuer_and_filer(
