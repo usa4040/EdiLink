@@ -3,7 +3,7 @@ from datetime import datetime
 from backend.models import Filer, FilerCode, Filing, HoldingDetail, Issuer
 
 
-def test_get_issuers_basic(client, db):
+async def test_get_issuers_basic(client, db):
     """
     銘柄一覧が正しく取得できるか（ページネーション含む）
     """
@@ -17,14 +17,14 @@ def test_get_issuers_basic(client, db):
     db.commit()
 
     # 全件取得
-    response = client.get("/api/issuers?limit=10")
+    response = await client.get("/api/issuers?limit=10")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 3
     assert len(data["items"]) == 3
 
     # ページネーション確認
-    response_paged = client.get("/api/issuers?limit=2&skip=1")
+    response_paged = await client.get("/api/issuers?limit=2&skip=1")
     assert response_paged.status_code == 200
     data_paged = response_paged.json()
     assert len(data_paged["items"]) == 2
@@ -33,7 +33,7 @@ def test_get_issuers_basic(client, db):
     # 通常はID順や作成順になるはず。
 
 
-def test_get_issuers_search(client, db):
+async def test_get_issuers_search(client, db):
     """
     銘柄名やコードで検索できるか
     """
@@ -46,39 +46,39 @@ def test_get_issuers_search(client, db):
     db.commit()
 
     # 名前検索 "Apple"
-    response = client.get("/api/issuers?search=Apple")
+    response = await client.get("/api/issuers?search=Apple")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["name"] == "Apple Japan"
 
     # コード検索 "2002"
-    response = client.get("/api/issuers?search=2002")
+    response = await client.get("/api/issuers?search=2002")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["name"] == "Banana Corp"
 
     # EDINETコード検索 "E20003"
-    response = client.get("/api/issuers?search=E20003")
+    response = await client.get("/api/issuers?search=E20003")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["name"] == "Cherry Inc"
 
 
-def test_get_issuers_empty(client):
+async def test_get_issuers_empty(client):
     """
     データがない場合に空リストが返るか
     """
-    response = client.get("/api/issuers")
+    response = await client.get("/api/issuers")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 0
     assert data["items"] == []
 
 
-def test_get_issuer_ownerships(client, db):
+async def test_get_issuer_ownerships(client, db):
     """
     指定した銘柄を保有している投資家一覧が取得できるか
     """
@@ -145,7 +145,7 @@ def test_get_issuer_ownerships(client, db):
     db.commit()
 
     # APIコール
-    response = client.get(f"/api/issuers/{issuer.id}/ownerships")
+    response = await client.get(f"/api/issuers/{issuer.id}/ownerships")
     assert response.status_code == 200
     data = response.json()
 
