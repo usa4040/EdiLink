@@ -5,9 +5,9 @@
 import os
 import sys
 
+import httpx
 import pytest
 import pytest_asyncio
-import httpx
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
