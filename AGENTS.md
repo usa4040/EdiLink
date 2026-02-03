@@ -1,14 +1,13 @@
 # AGENTS.md - AIコーディングエージェント向けガイドライン
 
-このファイルは、EdiLinkリポジトリで作業するAIエージェント向けのガイドラインです。
+EdiLinkリポジトリで作業するAIエージェント向けのガイドラインです。
 
 ## プロジェクト概要
 
-EdiLinkは、日本のEDINET（電子開示システム）の開示データを管理するフルスタックアプリケーションです。
+**EdiLink**は、日本のEDINET（電子開示システム）の開示データを管理するフルスタックアプリケーションです。
 
-**技術スタック:**
-- バックエンド: Python 3.12, FastAPI, SQLAlchemy (SQLite), pytest
-- フロントエンド: Next.js 16, React 19, TypeScript 5, Tailwind CSS 4
+- **バックエンド**: Python 3.12, FastAPI, SQLAlchemy (Async/PostgreSQL/SQLite), pytest
+- **フロントエンド**: Next.js 16, React 19, TypeScript 5, Tailwind CSS 4
 
 ---
 
@@ -17,22 +16,26 @@ EdiLinkは、日本のEDINET（電子開示システム）の開示データを�
 ### バックエンド (Python)
 
 ```bash
+# 依存関係インストール
+pip install -r requirements.txt
+
 # すべてのテストを実行
 pytest
 
 # 単一のテストファイルを実行
 pytest backend/tests/test_api.py -v
 
-# 特定のテストを実行
+# 特定のテストケースを実行
 pytest backend/tests/test_api.py::test_get_filers -v
 
-# カバレッジ付きで実行
-pytest --cov=backend
-
-# 型チェック実行
+# Lint & 型チェック
+ruff check backend/
 mypy backend/
 
-# ローカルサーバーを起動
+# ローカルサーバー起動 (開発用: SQLite + キャッシュ無効)
+# 注意: 非同期SQLAlchemyには 'sqlite+aiosqlite' スキームが必要です
+export DATABASE_URL=sqlite+aiosqlite:///./data/edinet.db
+export CI=true
 uvicorn backend.main:app --reload --port 8000
 ```
 
@@ -41,23 +44,21 @@ uvicorn backend.main:app --reload --port 8000
 ```bash
 cd frontend
 
-# 開発サーバー
+# 依存関係インストール
+npm install
+
+# 開発サーバー起動
 npm run dev
 
-# 本番ビルド
-npm run build
-
-# ESLint実行
-npm run lint
-
-# テスト実行
+# すべてのテストを実行
 npm test
 
-# ウォッチモードでテスト
-npm run test:watch
+# 単一のテストファイルを実行
+npm test -- src/test/Sidebar.test.tsx
 
-# 本番サーバー起動
-npm run start
+# Lint & 型チェック
+npm run lint
+npm run typecheck
 ```
 
 ---
@@ -66,134 +67,25 @@ npm run start
 
 ### Python (バックエンド)
 
-**フォーマット:**
-- フォーマッターは未設定 (black/ruff未使用)
-- 既存のコードパターンに従う
-- インデントは4スペース
-
-**命名規則:**
-- 関数/変数: `snake_case`
-- クラス: `PascalCase`
-- 定数: `UPPER_CASE`
-- データベースモデル: PascalCase (例: `Filer`, `HoldingDetail`)
-
-**インポート:**
-- 標準ライブラリ → サードパーティ → ローカルの順序
-- 絶対インポートを使用: `from backend.models import Filer`
-- スクリプト用にプロジェクトルートをsys.pathに追加
-
-**型:**
-- APIリクエスト/レスポンスには `schemas.py` のPydanticモデルを使用
-- データベースには `models.py` のSQLAlchemyモデルを使用
-- 型ヒントは必須（mypyによる静的型チェック）
-- Optional型は `| None` パターンを使用: `def func(x: str | None = None)`
-- Eager Loadingには `selectinload()` / `joinedload()` を使用
-
-**ドキュメント:**
-- 日本語のコメントも可（ターゲットユーザーが日本人）
-- モデルクラスの目的を説明するdocstringを使用
-
-**エラーハンドリング:**
-- APIエラーにはFastAPIの `HTTPException` を使用
-- 適切なHTTPステータスコードを返す (404, 400等)
+- **フォーマット**: `ruff` を使用（`pyproject.toml`設定準拠）。インデントは4スペース。
+- **型ヒント**: 必須。`mypy`でチェック。
+  - APIスキーマ: `schemas.py` (Pydantic)
+  - DBモデル: `models.py` (SQLAlchemy 2.0 DeclarativeBase)
+  - Optional型: `str | None` 形式を使用。
+- **データベース**: 非同期セッション (`AsyncSession`) を使用。
+  - N+1問題回避のため `selectinload()` や `joinedload()` を明示的に使用。
+- **命名規則**: 関数/変数 `snake_case`, クラス `PascalCase`.
+- **インポート**: 絶対インポートを使用 (`from backend.models import ...`)。
 
 ### TypeScript/JavaScript (フロントエンド)
 
-**フォーマット:**
-- Prettierは未設定 - 既存のパターンに従う
-- インデントは2スペース
-- 文字列はダブルクォート
-
-**命名規則:**
-- コンポーネント: `PascalCase` (例: `Sidebar`, `MainContent`)
-- 関数/変数: `camelCase` (例: `fetchFilers`, `isCollapsed`)
-- 型/インターフェース: `PascalCase` (例: `Filer`, `PaginatedResponse`)
-- ファイル名: コンポーネントはPascalCase、ユーティリティはcamelCase
-
-**インポート:**
-- プロジェクトインポートには `@/` パスエイリアスを使用
-- インポートをグループ化: React/Next → コンポーネント → ユーティリティ
-- 例: `import { Sidebar } from "@/app/components/Sidebar";`
-
-**TypeScript:**
-- 厳格モード有効
-- データ構造にはインターフェースを定義
-- 関数には適切な戻りり値の型を指定
-- `any` は避ける - 型が不明な場合は `unknown` を使用
-
-**React:**
-- フックを使用した関数コンポーネント
-- クライアントコンポーネントには "use client" ディレクティブ
-- Next.js App Routerパターンを使用
-- 子コンポーネントに渡すイベントハンドラには `useCallback` を優先
-
-**Tailwind CSS:**
-- Tailwind v4はCSSベースの設定 (tailwind.config.jsなし)
-- カスタムテーマは `src/app/globals.css` に定義
-- モバイルファーストのレスポンシブデザイン (`sm:`, `lg:` プレフィックスを使用)
-- 任意の値は控えめに使用
-
-**エラーハンドリング:**
-- 非同期処理にはtry/catchを使用
-- 日本語でユーザーフレンドリーなエラーメッセージを表示
-- コンポーネントでエラー状態を使用
-
----
-
-## セキュリティとパフォーマンス
-
-### セキュリティ
-
-**レート制限:**
-- すべてのAPIエンドポイントにレート制限を適用
-- slowapiによる自動的な制限（100/30/50/10 req/min）
-
-**入力バリデーション:**
-- Pydanticモデルによる厳格なバリデーション
-- Queryパラメータの範囲制限（ge, le, max_length）
-
-**セキュリティヘッダー:**
-- secureパッケージによる自動追加
-- X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
-
-### パフォーマンス
-
-**データベース最適化:**
-- Eager Loading（selectinload/joinedload）でN+1問題を解消
-- ページネーションによる大規模データの効率的取得
-
----
-
-## テストガイドライン
-
-### Pythonテスト (pytest)
-
-- テストは `backend/tests/` に配置
-- `conftest.py` のフィクスチャを使用:
-  - `db`: テストごとにクリーンなインメモリSQLite
-  - `client`: DBオーバーライド付きFastAPI TestClient
-  - `sample_data`: 事前に設定されたテストデータ
-
-**テストの実行:**
-```bash
-# すべてのテスト
-pytest
-
-# 特定のファイル
-pytest backend/tests/test_api.py
-
-# 特定のテスト（詳細出力付き）
-pytest backend/tests/test_crud.py::test_create_filer -v
-```
-
-### フロントエンドテスト
-
-- **Vitest**を使用（Viteベースの高速テストランナー）
-- **@testing-library/react**でコンポーネントテスト
-- テストは `frontend/src/test/` に配置
-- テスト実行: `npm test`
-- ウォッチモード: `npm run test:watch`
-- E2Eテストには将来的にPlaywrightを検討
+- **フォーマット**: Prettier/ESLint準拠。インデントは2スペース。
+- **コンポーネント**: 関数コンポーネント + Hooks。
+  - クライアント機能が必要な場合はファイルの先頭に `"use client"`。
+- **命名規則**: コンポーネント `PascalCase`, 関数 `camelCase`。
+- **インポート**: `@/` エイリアスを使用 (`import ... from "@/components/..."`)。
+- **Tailwind CSS**: v4を使用。`className` にユーティリティクラスを記述。
+  - カスタムスタイルは `src/app/globals.css`。
 
 ---
 
@@ -201,123 +93,49 @@ pytest backend/tests/test_crud.py::test_create_filer -v
 
 ```
 /Users/home/project/EdiLink/
-├── backend/           # FastAPI Pythonバックエンド
-│   ├── main.py        # APIルート
-│   ├── models.py      # SQLAlchemyモデル
-│   ├── schemas.py     # Pydanticスキーマ
-│   ├── crud.py        # データベース操作
-│   ├── database.py    # DB接続
-│   └── tests/         # pytestテストスイート
-├── frontend/          # Next.jsフロントエンド
+├── backend/           # FastAPIアプリ
+│   ├── main.py        # エントリーポイント
+│   ├── models.py      # SQLAlchemyモデル定義
+│   ├── schemas.py     # Pydanticデータスキーマ
+│   ├── crud.py        # DB操作ロジック
+│   ├── database.py    # DB接続設定
+│   └── tests/         # pytestテスト
+├── frontend/          # Next.jsアプリ
 │   ├── src/app/       # App Routerページ
-│   ├── components/    # Reactコンポーネント
-│   └── context/       # Reactコンテキスト
-├── scripts/           # ユーティリティスクリプト
-├── docs/              # ドキュメント
-│   ├── api-reference.md    # API仕様書
-│   └── architecture.md     # アーキテクチャ図
-└── data/              # SQLiteデータベース
+│   ├── src/components/# UIコンポーネント
+│   └── src/test/      # Vitestテスト
+├── data/              # SQLiteデータベース (edinet.db)
+└── scripts/           # ユーティリティスクリプト
 ```
 
 ---
 
-## 一般的なタスク
+## エージェント向け運用ルール
 
-**新しいAPIエンドポイントを追加:**
-1. `backend/main.py` にルートを追加
-2. 必要に応じて `backend/schemas.py` にスキーマを追加
-3. 必要に応じて `backend/crud.py` にCRUD関数を追加
-4. `backend/tests/test_api.py` にテストを追加
+1. **ファイルパス**: 常に絶対パスを使用してください。
+2. **既存コードの尊重**: 既存のファイルを読む際は、まず `read` ツールで内容とスタイルを確認してから編集してください。
+3. **テスト駆動**: 修正や機能追加の際は、関連するテストを実行（または追加）して動作を検証してください。
+4. **エラーハンドリング**:
+   - Backend: 想定されるエラーは `HTTPException` で適切なステータスコードを返してください。
+   - Frontend: ユーザーに分かりやすい日本語のエラーメッセージを表示してください。
 
-**新しいページを追加:**
-1. `frontend/src/app/[route]/page.tsx` にページを作成
-2. インタラクティブが必要な場合は "use client" を使用
-3. 既存のコンポーネントパターンに従う
-4. Tailwindでスタイリング
+## AIエージェントの振る舞い設定 (Jules等向け)
 
-**データ同期を実行:**
-```bash
-python backend/sync_edinet.py
-```
+このリポジトリで作業するAIエージェント（Jules等）は、以下の言語設定を遵守してください。
 
-**ドキュメントを確認:**
-- API仕様: `docs/api-reference.md`
-- アーキテクチャ: `docs/architecture.md`
-- 貢献ガイド: `CONTRIBUTING.md`
+1. **Pull Request (PR) 作成時**:
+   - **タイトル**: 日本語で簡潔に記述してください（例: `fix(api): ユーザー取得ロジックの修正`）。
+   - **説明文 (Body)**: 変更内容、目的、検証結果を**日本語**で記述してください。
+   - **要約**: 自動生成される要約も可能な限り日本語にしてください。
 
----
+2. **コミュニケーション**:
+   - Issueへのコメントや提案は**日本語**で行ってください。
 
-## 環境
+## PRレビュープロトコル (Self-Review含む)
 
-- フロントエンドにはNode.js 20+が必要
-- バックエンドにはPython 3.12+が必要
-- SQLiteデータベースは `data/edinet.db` に保存
-- バックエンドはポート8000で実行
-- フロントエンドはポート3000で実行
+コードを変更またはレビューする際は以下を確認してください：
 
----
-
-## PRレビュープロトコル
-
-### レビュー依頼時の対応
-
-ユーザーからPRレビューを依頼された場合：
-
-1. **PR情報の取得**
-   ```bash
-   gh pr view {NUMBER} --json number,title,body,author,additions,deletions,changedFiles
-   gh pr diff {NUMBER} --name-only
-   gh pr checks {NUMBER}
-   ```
-
-2. **包括的な観点からレビュー**
-
-   | 重大度 | 説明 | 例 |
-   |-------|------|-----|
-   | 🔴 **Critical** | マージ前に必ず修正 | セキュリティ脆弱性、データ損失リスク |
-   | 🟠 **High** | マージ前に修正すべき | バグ、パフォーマンス問題、未処理のエラー |
-   | 🟡 **Medium** | 修正を推奨 | 保守性、可読性、重複コード |
-   | 🟢 **Low** | 改善の余地（任意） | スタイル、命名、ドキュメント |
-
-3. **EdiLink固有のチェック項目**
-
-   **バックエンド (Python/FastAPI):**
-   - SQLAlchemy 2.0パターンの遵守
-   - Pydanticモデルの厳密なバリデーション
-   - レート制限の適用確認
-   - mypy型チェックエラーなし
-   - pytestテストカバレッジ
-
-   **フロントエンド (Next.js/React):**
-   - React 19/Next.js 16のベストプラクティス
-   - TypeScript厳格モード準拠
-   - カスタムフックの適切な使用
-   - Tailwind CSS v4パターン
-   - Vitestテストカバレッジ
-
-4. **レビューレポート形式**
-   ```markdown
-   ## PR #{NUMBER} レビュー結果
-
-   ### 概要
-   - 変更: +X -Y 行
-   - CI: ✅ 通過 / ❌ 失敗
-
-   ### 良い点
-   1.
-
-   ### 懸念事項
-   #### 🔴 Critical (0件)
-   #### 🟠 High (0件)
-   #### 🟡 Medium (0件)
-   #### 🟢 Low (0件)
-
-   ### 最終判定
-   [APPROVE / REQUEST_CHANGES / COMMENT]
-   ```
-
-### セルフレビューの対応
-
-実装者自身によるPRレビューの場合：
-- 公平性を保つため、**別セッション（別エージェント）**でのレビューを推奨
-- または、少なくとも24時間以上間隔を空けて客観的に確認
+- [ ] **安全性**: SQLインジェクション、XSS、機密情報の漏洩がないか。
+- [ ] **パフォーマンス**: N+1問題、不要な再レンダリングがないか。
+- [ ] **整合性**: 型定義と実装が一致しているか。
+- [ ] **テスト**: 変更箇所をカバーするテストが存在し、パスしているか。
