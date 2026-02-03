@@ -188,7 +188,9 @@ async def get_filer(request: Request, filer_id: int, db: AsyncSession = Depends(
 
 @app.post("/api/filers", response_model=schemas.FilerResponse)
 @limiter.limit("10/minute")
-async def create_filer(request: Request, filer: schemas.FilerCreate, db: AsyncSession = Depends(get_db)):
+async def create_filer(
+    request: Request, filer: schemas.FilerCreate, db: AsyncSession = Depends(get_db)
+):
     """新しい提出者を追加"""
     existing = crud.get_filer_by_edinet_code(db, filer.edinet_code)
     if existing:
@@ -295,7 +297,9 @@ async def get_issuer(request: Request, issuer_id: int, db: AsyncSession = Depend
 @app.get("/api/issuers/{issuer_id}/ownerships", response_model=schemas.IssuerOwnershipResponse)
 @limiter.limit("50/minute")
 @cache(expire=900)
-async def get_issuer_ownerships(request: Request, issuer_id: int, db: AsyncSession = Depends(get_db)):
+async def get_issuer_ownerships(
+    request: Request, issuer_id: int, db: AsyncSession = Depends(get_db)
+):
     """銘柄を保有している投資家一覧を取得"""
     issuer = crud.get_issuer_by_id(db, issuer_id)
     if not issuer:
