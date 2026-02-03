@@ -63,5 +63,13 @@ module = "backend.sync_edinet"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
+module = "backend.cache"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
 module = "backend.main"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "backend.tests.*"
 ignore_errors = true

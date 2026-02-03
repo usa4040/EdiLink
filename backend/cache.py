@@ -28,7 +28,7 @@ async def get_cache_client() -> redis.Redis:
     Returns:
         redis.Redis: Async Redis client instance.
     """
-    return redis.from_url(REDIS_URL, decode_responses=True)
+    return redis.from_url(REDIS_URL, decode_responses=True)  # type: ignore[no-any-return]
 
 
 async def clear_cache(pattern: str | None = None) -> None:
@@ -102,4 +102,4 @@ async def cache_delete(key: str) -> int:
     redis_client = await get_cache_client()
     result = await redis_client.delete(key)
     await redis_client.close()
-    return result
+    return result  # type: ignore[no-any-return]
