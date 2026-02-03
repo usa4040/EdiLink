@@ -43,6 +43,7 @@ async def get_filers(
             filing_stats.c.issuer_count,
             filing_stats.c.latest_filing_date,
         )
+        .options(selectinload(Filer.filer_codes))
         .select_from(Filer)
         .outerjoin(filing_stats, Filer.id == filing_stats.c.filer_id)
         .order_by(desc(filing_stats.c.issuer_count))
@@ -81,7 +82,7 @@ async def get_filer_by_edinet_code(db: AsyncSession, edinet_code: str) -> Filer 
     stmt = (
         select(FilerCode)
         .where(FilerCode.edinet_code == edinet_code)
-        .options(joinedload(FilerCode.filer))
+        .options(joinedload(FilerCode.filer).selectinload(Filer.filer_codes))
     )
     result = await db.execute(stmt)
     filer_code = result.scalar_one_or_none()
@@ -98,8 +99,9 @@ async def create_filer(
 
     filer_code = FilerCode(filer_id=filer.id, edinet_code=edinet_code, name=name)
     db.add(filer_code)
-    await db.commit()
-    await db.refresh(filer)
+    await db.flush()
+    await db.refresh(filer, attribute_names=["filer_codes"])
+
     return filer
 
 

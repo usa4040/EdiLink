@@ -1,11 +1,11 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import os
 
 if os.getenv("CI") == "true":
     # No-op cache decorator for CI
@@ -20,6 +20,7 @@ from secure import Secure
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,7 +65,7 @@ secure_headers = Secure()
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
-    secure_headers.framework.fastapi(response)
+    secure_headers.set_headers(response)
     return response
 
 
@@ -385,7 +386,9 @@ async def get_issuer_history(
 
     # N+1問題解消: 全HoldingDetailを一括取得
     filing_ids = [f.id for f in filings]
-    holdings = db.query(HoldingDetail).filter(HoldingDetail.filing_id.in_(filing_ids)).all()
+    stmt = select(HoldingDetail).where(HoldingDetail.filing_id.in_(filing_ids))
+    result = await db.execute(stmt)
+    holdings = result.scalars().all()
     holding_map = {h.filing_id: h for h in holdings}
 
     history = []
