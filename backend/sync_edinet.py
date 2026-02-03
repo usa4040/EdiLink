@@ -88,7 +88,7 @@ def sync_documents(filer_edinet_code: str | None = None, days: int = 365, use_ca
     new_issuers = 0
     processed_doc_ids = set()  # セッション内での重複を追跡
 
-    with SyncSessionLocal() as db:
+    with SyncSessionLocal() as db:  # type: ignore[assignment]
         for d in tqdm(date_list, desc="Fetching documents"):
             # キャッシュファイルチェック
             cache_file = os.path.join(cache_dir, f"list_{d.strftime('%Y-%m-%d')}.json")
@@ -251,7 +251,7 @@ def sync_issuer_names(csv_path: str | None = None):
     print(f"Loaded {len(edinet_to_info)} EDINET codes from CSV")
 
     # DBのIssuerを更新
-    with SyncSessionLocal() as db:
+    with SyncSessionLocal() as db:  # type: ignore[assignment]
         issuers = db.query(Issuer).all()
         updated = 0
 
@@ -421,7 +421,7 @@ def sync_holding_details(
         print("Error: API_KEY not found in .env file.")
         return
 
-    with SyncSessionLocal() as db:
+    with SyncSessionLocal() as db:  # type: ignore[assignment]
         # CSVフラグがあり、まだHoldingDetailがないFilingを取得
         query = (
             db.query(Filing)
