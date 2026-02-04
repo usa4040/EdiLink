@@ -11,16 +11,21 @@ import sys
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
 
+import asyncio
+
+from sqlalchemy import select
+
 from backend.database import get_db_session
 from backend.models import Filer, FilerCode
 
 
-def check_filer_code(edinet_code="E35239"):
+async def check_filer_code(edinet_code="E35239"):
     print(f"Checking database for {edinet_code}...")
 
-    with get_db_session() as db:
+    async with get_db_session() as db:
         # FilerCodeテーブル確認
-        filer_code = db.query(FilerCode).filter(FilerCode.edinet_code == edinet_code).first()
+        fc_stmt = select(FilerCode).where(FilerCode.edinet_code == edinet_code)
+        filer_code = (await db.execute(fc_stmt)).scalar_one_or_none()
 
         if filer_code:
             print("[FOUND in FilerCode]")
@@ -29,7 +34,8 @@ def check_filer_code(edinet_code="E35239"):
             print(f"  FilerID: {filer_code.filer_id}")
 
             # 親Filer確認
-            filer = db.query(Filer).filter(Filer.id == filer_code.filer_id).first()
+            f_stmt = select(Filer).where(Filer.id == filer_code.filer_id)
+            filer = (await db.execute(f_stmt)).scalar_one_or_none()
             if filer:
                 print("  [Parent Filer]")
                 print(f"    ID: {filer.id}")
@@ -39,11 +45,12 @@ def check_filer_code(edinet_code="E35239"):
             print(f"[NOT FOUND] {edinet_code} is not in FilerCode table.")
 
         # Filerテーブル直接確認（稀なケース）
-        filer_direct = db.query(Filer).filter(Filer.edinet_code == edinet_code).first()
+        fd_stmt = select(Filer).where(Filer.edinet_code == edinet_code)
+        filer_direct = (await db.execute(fd_stmt)).scalar_one_or_none()
         if filer_direct:
             print("[FOUND in Filer (Direct)]")
             print(f"  ID: {filer_direct.id}")
             print(f"  Name: {filer_direct.name}")
 
 if __name__ == "__main__":
-    check_filer_code()
+    asyncio.run(check_filer_code())

@@ -8,6 +8,7 @@ import os
 import sys
 import time
 from datetime import datetime, timedelta
+from typing import Any
 
 import requests
 from dotenv import load_dotenv
@@ -38,7 +39,7 @@ def check_recent_filings(filer_code="E04948", target_date_str=None, days=40):
     while current_date <= end_date:
         date_str = current_date.strftime("%Y-%m-%d")
         url = f"{EDINET_API_BASE}/documents.json"
-        params = {
+        params: dict[str, Any] = {
             "date": date_str,
             "type": 2,
             "Subscription-Key": API_KEY

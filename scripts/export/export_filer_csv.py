@@ -13,18 +13,23 @@ import sys
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
 
+import asyncio
+
+from sqlalchemy import select
+
 from backend.database import get_db_session
 from backend.models import FilerCode, Filing
 
 
-def export_filer_csv(edinet_code, output_file=None):
+async def export_filer_csv(edinet_code, output_file=None):
     if not output_file:
         # デフォルトの出力先を exports/ ディレクトリに設定
         output_file = os.path.join(project_root, "exports", f"{edinet_code}_filings.csv")
 
-    with get_db_session() as db:
+    async with get_db_session() as db:
         # Filer特定
-        filer_code = db.query(FilerCode).filter(FilerCode.edinet_code == edinet_code).first()
+        filer_code_stmt = select(FilerCode).where(FilerCode.edinet_code == edinet_code)
+        filer_code = (await db.execute(filer_code_stmt)).scalar_one_or_none()
         if not filer_code:
             print(f"Filer not found for code: {edinet_code}")
             return
@@ -32,9 +37,13 @@ def export_filer_csv(edinet_code, output_file=None):
         print(f"Exporting filings for {filer_code.name} ({edinet_code})...")
 
         # 書類取得
-        filings = db.query(Filing).filter(
-            Filing.filer_id == filer_code.filer_id
-        ).order_by(Filing.submit_date.desc()).all()
+        filings_stmt = (
+            select(Filing)
+            .where(Filing.filer_id == filer_code.filer_id)
+            .order_by(Filing.submit_date.desc())
+        )
+        result = await db.execute(filings_stmt)
+        filings = result.scalars().all()
 
         if not filings:
             print("No filings found.")
@@ -74,4 +83,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    export_filer_csv(args.edinet_code, args.out)
+    asyncio.run(export_filer_csv(args.edinet_code, args.out))

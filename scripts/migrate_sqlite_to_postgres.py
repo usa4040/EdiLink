@@ -52,7 +52,7 @@ def get_sqlite_connection() -> sqlite3.Connection:
     return sqlite3.connect(db_path)
 
 
-def parse_datetime(value: Any) -> datetime:
+def parse_datetime(value: Any) -> datetime | None:
     """SQLiteのdatetime文字列をPython datetimeに変換"""
     if value is None:
         return None
