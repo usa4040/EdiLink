@@ -3,6 +3,8 @@ SQLAlchemy 2.0スタイルのデータベースモデル
 非同期PostgreSQL対応
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from typing import Optional, cast
 

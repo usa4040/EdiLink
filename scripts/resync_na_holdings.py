@@ -14,7 +14,7 @@ import argparse
 import asyncio
 from typing import Optional
 
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select
 
 from backend.database import get_db_session
 from backend.models import Filer, FilerCode, Filing, HoldingDetail
@@ -72,7 +72,6 @@ async def delete_na_holdings(filer_edinet_code: Optional[str] = None, dry_run: b
             return len(na_ids)
 
         if na_ids:
-            from sqlalchemy import delete
             delete_stmt = delete(HoldingDetail).where(HoldingDetail.id.in_(na_ids))
             result = await db.execute(delete_stmt)
             await db.commit()

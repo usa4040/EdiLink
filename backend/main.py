@@ -9,13 +9,11 @@ from fastapi.responses import JSONResponse
 
 if os.getenv("CI") == "true":
     # No-op cache decorator for CI
-    def _noop_cache(expire=0):
+    def cache(expire=0):
         def decorator(func):
             return func
 
         return decorator
-
-    cache = _noop_cache
 else:
     from fastapi_cache.decorator import cache
 from slowapi import Limiter, _rate_limit_exceeded_handler

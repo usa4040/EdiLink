@@ -9,16 +9,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
 import contextlib
+import io
+import json
 import time
+import zipfile
 from datetime import datetime, timedelta
 from typing import TypedDict, cast
 
+import pandas as pd
 import requests
+from sqlalchemy import extract
 from dotenv import load_dotenv
 from tqdm import tqdm
 
 from backend.database import get_sync_db_session, sync_engine
-from backend.models import Base, Filer, FilerCode, Filing, Issuer
+from backend.models import Base, Filer, FilerCode, Filing, HoldingDetail, Issuer
 
 # .envの読み込み
 load_dotenv()
@@ -94,15 +99,11 @@ def sync_documents(filer_edinet_code: str | None = None, days: int = 365, use_ca
             cache_file = os.path.join(cache_dir, f"list_{d.strftime('%Y-%m-%d')}.json")
 
             if use_cache and os.path.exists(cache_file):
-                import json
-
                 with open(cache_file, encoding="utf-8") as f:
                     data = json.load(f)
             else:
                 data = get_documents_by_date(d)
                 if data and use_cache:
-                    import json
-
                     with open(cache_file, "w", encoding="utf-8") as f:
                         json.dump(data, f, ensure_ascii=False, indent=2)
                 time.sleep(1)  # API制限対策（1秒間隔）
@@ -210,8 +211,6 @@ def sync_issuer_names(csv_path: str | None = None):
     """
     EDINETコードリストから銘柄名を更新
     """
-    import pandas as pd
-
     if csv_path is None:
         csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "EdinetcodeDlInfo.csv")
 
@@ -300,11 +299,6 @@ def extract_holding_data_from_csv(csv_content: bytes) -> HoldingDataResult:
 
     EDINETのXBRL→CSV変換データ（UTF-16、タブ区切り）を解析
     """
-    import io
-    import zipfile
-
-    import pandas as pd
-
     result: HoldingDataResult = {
         "shares_held": None,
         "holding_ratio": None,
@@ -413,10 +407,6 @@ def sync_holding_details(
         limit: 処理する報告書の最大数（テスト用）
         year: 特定の年に絞る場合の年（例: 2025）
     """
-    from sqlalchemy import extract
-
-    from backend.models import HoldingDetail
-
     if not API_KEY:
         print("Error: API_KEY not found in .env file.")
         return
