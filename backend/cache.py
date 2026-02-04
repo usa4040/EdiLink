@@ -17,10 +17,7 @@ async def init_cache() -> None:
     """Initialize the FastAPI cache with Redis backend.
 
     Should be called during application startup event.
-    Skip initialization in test environment (CI).
     """
-    if os.getenv("CI") == "true":
-        return
     redis_client = redis.from_url(REDIS_URL, decode_responses=True)
     FastAPICache.init(RedisBackend(redis_client), prefix="edinet")
 

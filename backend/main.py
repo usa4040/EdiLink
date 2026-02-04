@@ -1,21 +1,11 @@
 import logging
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
-if os.getenv("CI") == "true":
-    # No-op cache decorator for CI
-    def cache(expire=0):
-        def decorator(func):
-            return func
-
-        return decorator
-else:
-    from fastapi_cache.decorator import cache
+from fastapi_cache.decorator import cache
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address

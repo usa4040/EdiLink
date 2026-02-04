@@ -1,5 +1,5 @@
 """
-非同期テスト設定（SQLite対応）
+非同期テスト設定（PostgreSQL対応）
 """
 
 import os
@@ -32,8 +32,10 @@ async def setup_cache() -> AsyncGenerator[None, None]:
 
 
 # テスト用の非同期データベースエンジン
-# 環境変数から取得、またはデフォルトのSQLite
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite+aiosqlite:///./test.db")
+# 環境変数から取得、またはデフォルトのPostgreSQL
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL", "postgresql+asyncpg://edinet:edinet@localhost:5432/edinet_test"
+)
 
 # 非同期エンジン（テスト用）
 test_async_engine = create_async_engine(
