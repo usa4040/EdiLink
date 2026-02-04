@@ -3,10 +3,12 @@
 """
 
 import os
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator, Generator
+from contextlib import asynccontextmanager, contextmanager
 
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 # 環境変数からデータベースURLを取得（デフォルトはPostgreSQL）
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://edinet:edinet@localhost:5432/edinet")
@@ -47,7 +49,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 @asynccontextmanager
-async def get_db_session():
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     スクリプト用の非同期コンテキストマネージャ
 
@@ -68,10 +70,6 @@ async def get_db_session():
 
 # 後方互換性のための同期版（スクリプト移行用）
 # 移行完了後に削除予定
-from contextlib import contextmanager  # noqa: E402
-
-from sqlalchemy import create_engine  # noqa: E402
-from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 
 # SQLite用の同期エンジン（データ移行時のみ使用）
 _sqlite_url = os.getenv("SQLITE_URL", "sqlite:///data/edinet.db")
@@ -80,7 +78,7 @@ SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_eng
 
 
 @contextmanager
-def get_sync_db_session():
+def get_sync_db_session() -> Generator[Session, None, None]:
     """
     スクリプト用の同期コンテキストマネージャ
 
