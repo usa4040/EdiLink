@@ -11,13 +11,13 @@ import argparse
 import contextlib
 import time
 from datetime import datetime, timedelta
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import requests
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-from backend.database import SyncSessionLocal, sync_engine
+from backend.database import get_sync_db_session, sync_engine
 from backend.models import Base, Filer, FilerCode, Filing, Issuer
 
 # .envの読み込み
@@ -88,7 +88,7 @@ def sync_documents(filer_edinet_code: str | None = None, days: int = 365, use_ca
     new_issuers = 0
     processed_doc_ids = set()  # セッション内での重複を追跡
 
-    with SyncSessionLocal() as db:  # type: ignore[assignment]
+    with get_sync_db_session() as db:
         for d in tqdm(date_list, desc="Fetching documents"):
             # キャッシュファイルチェック
             cache_file = os.path.join(cache_dir, f"list_{d.strftime('%Y-%m-%d')}.json")
@@ -251,7 +251,7 @@ def sync_issuer_names(csv_path: str | None = None):
     print(f"Loaded {len(edinet_to_info)} EDINET codes from CSV")
 
     # DBのIssuerを更新
-    with SyncSessionLocal() as db:  # type: ignore[assignment]
+    with get_sync_db_session() as db:
         issuers = db.query(Issuer).all()
         updated = 0
 
@@ -273,14 +273,14 @@ def download_document_csv(doc_id: str) -> bytes | None:
     EDINET APIから報告書のCSVデータをダウンロード
     """
     url = f"{EDINET_API_BASE}/documents/{doc_id}"
-    params = {
+    params: dict[str, str | int | None] = {
         "type": 5,  # 5: CSV
         "Subscription-Key": API_KEY,
     }
     try:
         response = requests.get(url, params=params, timeout=60)
         if response.status_code == 200:
-            return response.content
+            return cast(bytes, response.content)
     except Exception as e:
         print(f"Error downloading CSV for {doc_id}: {e}")
     return None
@@ -421,7 +421,7 @@ def sync_holding_details(
         print("Error: API_KEY not found in .env file.")
         return
 
-    with SyncSessionLocal() as db:  # type: ignore[assignment]
+    with get_sync_db_session() as db:
         # CSVフラグがあり、まだHoldingDetailがないFilingを取得
         query = (
             db.query(Filing)

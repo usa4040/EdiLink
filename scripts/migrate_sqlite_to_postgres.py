@@ -16,7 +16,7 @@ import sqlite3
 # プロジェクトルートをPythonパスに追加
 import sys
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,7 +52,7 @@ def get_sqlite_connection() -> sqlite3.Connection:
     return sqlite3.connect(db_path)
 
 
-def parse_datetime(value: Any) -> datetime:
+def parse_datetime(value: Any) -> Optional[datetime]:
     """SQLiteのdatetime文字列をPython datetimeに変換"""
     if value is None:
         return None

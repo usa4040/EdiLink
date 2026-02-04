@@ -4,7 +4,7 @@ SQLAlchemy 2.0スタイルのデータベースモデル
 """
 
 from datetime import UTC, datetime
-from typing import Optional
+from typing import Optional, cast
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -43,7 +43,7 @@ class Filer(Base):
     def primary_edinet_code(self) -> str | None:
         """代表的なEDINETコードを返す"""
         if self.filer_codes:
-            return self.filer_codes[0].edinet_code
+            return cast(str | None, self.filer_codes[0].edinet_code)
         return None
 
     @property
