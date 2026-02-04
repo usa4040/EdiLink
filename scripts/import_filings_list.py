@@ -1,35 +1,39 @@
 """
 CSVファイルをデータベースにインポートするスクリプト
 """
+import asyncio
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import contextlib
 from datetime import datetime
 
 import pandas as pd
+from sqlalchemy import select
 
-from backend.database import get_db_session
-from backend.models import Base, Filer, Filing, Issuer, get_engine
+from backend.database import async_engine, get_db_session
+from backend.models import Base, Filer, Filing, Issuer
 
 
-def import_csv_to_db(csv_path: str):
+async def import_csv_to_db(csv_path: str):
     """CSVファイルからデータをDBにインポート"""
 
     # データベース初期化
-    engine = get_engine()
-    Base.metadata.create_all(bind=engine)
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
     # CSV読み込み
     df = pd.read_csv(csv_path)
     print(f"Loaded {len(df)} records from CSV")
 
-    with get_db_session() as db:
+    async with get_db_session() as db:
         # 1. 提出者（Filer）を登録
         filer_codes = df['edinetCode'].unique()
         for code in filer_codes:
-            existing = db.query(Filer).filter(Filer.edinet_code == code).first()
+            f_stmt = select(Filer).where(Filer.edinet_code == code)
+            existing = (await db.execute(f_stmt)).scalar_one_or_none()
             if not existing:
                 row = df[df['edinetCode'] == code].iloc[0]
                 filer = Filer(
@@ -40,47 +44,49 @@ def import_csv_to_db(csv_path: str):
                 )
                 db.add(filer)
                 print(f"Added Filer: {filer.name} ({code})")
-        db.flush()
+        await db.flush()
 
         # 2. 発行体（Issuer）を登録
-        issuer_codes = df['issuerEdinetCode'].dropna().unique()
+        issuer_codes = df["issuerEdinetCode"].dropna().unique()
         for code in issuer_codes:
-            if not code or str(code) == 'nan':
+            if not code or str(code) == "nan":
                 continue
-            existing = db.query(Issuer).filter(Issuer.edinet_code == code).first()
+            i_stmt = select(Issuer).where(Issuer.edinet_code == code)
+            existing = (await db.execute(i_stmt)).scalar_one_or_none()
             if not existing:
-                issuer = Issuer(
+                new_issuer = Issuer(
                     edinet_code=code,
                     name=None,  # 後で取得
-                    sec_code=None
+                    sec_code=None,
                 )
-                db.add(issuer)
+                db.add(new_issuer)
                 print(f"Added Issuer: {code}")
-        db.flush()
+        await db.flush()
 
         # 3. 報告書（Filing）を登録
         for _, row in df.iterrows():
             doc_id = row['docID']
-            existing = db.query(Filing).filter(Filing.doc_id == doc_id).first()
+            fi_stmt = select(Filing).where(Filing.doc_id == doc_id)
+            existing = (await db.execute(fi_stmt)).scalar_one_or_none()
             if existing:
                 continue
 
             # Filerを取得
-            filer = db.query(Filer).filter(Filer.edinet_code == row['edinetCode']).first()
+            f_get_stmt = select(Filer).where(Filer.edinet_code == row["edinetCode"])
+            filer = (await db.execute(f_get_stmt)).scalar_one_or_none()
 
             # Issuerを取得
-            issuer = None
-            issuer_code = row.get('issuerEdinetCode')
+            issuer: Issuer | None = None
+            issuer_code = row.get("issuerEdinetCode")
             if pd.notna(issuer_code) and issuer_code:
-                issuer = db.query(Issuer).filter(Issuer.edinet_code == issuer_code).first()
+                i_get_stmt = select(Issuer).where(Issuer.edinet_code == issuer_code)
+                issuer = (await db.execute(i_get_stmt)).scalar_one_or_none()
 
             # 提出日時のパース
             submit_date = None
             if pd.notna(row.get('submitDateTime')):
-                try:
+                with contextlib.suppress(Exception):
                     submit_date = datetime.strptime(str(row['submitDateTime']), '%Y-%m-%d %H:%M:%S')
-                except:
-                    pass
 
             filing = Filing(
                 doc_id=doc_id,
@@ -104,4 +110,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         csv_path = sys.argv[1]
 
-    import_csv_to_db(csv_path)
+    asyncio.run(import_csv_to_db(csv_path))

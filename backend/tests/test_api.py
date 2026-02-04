@@ -1,11 +1,16 @@
-async def test_read_root(client):
+from typing import Any
+
+from httpx import AsyncClient
+
+
+async def test_read_root(client: AsyncClient) -> None:
     """ルートエンドポイントが正しく応答するか"""
     response = await client.get("/")
     assert response.status_code == 200
     assert response.json()["version"] == "1.0.0"
 
 
-async def test_get_filers(client, sample_data):
+async def test_get_filers(client: AsyncClient, sample_data: dict[str, Any]) -> None:
     """提出者一覧が正しく取得できるか"""
     response = await client.get("/api/filers")
     assert response.status_code == 200
@@ -15,7 +20,7 @@ async def test_get_filers(client, sample_data):
     assert data[0]["edinet_code"] == "E00000"
 
 
-async def test_get_issuer_history(client, sample_data):
+async def test_get_issuer_history(client: AsyncClient, sample_data: dict[str, Any]) -> None:
     """銘柄の履歴がHoldingDetailを含めて正しく取得できるか"""
     filer_id = sample_data["filer"].id
     issuer_id = sample_data["issuer"].id
@@ -37,7 +42,7 @@ async def test_get_issuer_history(client, sample_data):
     assert history_entry["holding_ratio"] == 5.50
 
 
-async def test_get_non_existent_filer(client):
+async def test_get_non_existent_filer(client: AsyncClient) -> None:
     """存在しない提出者の場合に404を返すか"""
     response = await client.get("/api/filers/9999")
     assert response.status_code == 404

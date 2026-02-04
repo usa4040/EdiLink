@@ -21,7 +21,7 @@ with open(output_path, 'w', encoding='utf-8') as f:
     f.write("\n【1. filersテーブル - 光通信を含む会社】\n")
     cursor.execute("""
         SELECT id, edinet_code, name, sec_code, jcn
-        FROM filers 
+        FROM filers
         WHERE name LIKE '%光通信%'
         ORDER BY name
     """)
@@ -34,7 +34,7 @@ with open(output_path, 'w', encoding='utf-8') as f:
     f.write("\n【2. issuersテーブル - 光通信を含む会社】\n")
     cursor.execute("""
         SELECT id, edinet_code, name, sec_code
-        FROM issuers 
+        FROM issuers
         WHERE name LIKE '%光通信%'
         ORDER BY name
     """)

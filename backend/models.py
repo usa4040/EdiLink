@@ -3,8 +3,10 @@ SQLAlchemy 2.0スタイルのデータベースモデル
 非同期PostgreSQL対応
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
-from typing import Optional
+from typing import cast
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -34,16 +36,16 @@ class Filer(Base):
     )
 
     # リレーション
-    filer_codes: Mapped[list["FilerCode"]] = relationship(
+    filer_codes: Mapped[list[FilerCode]] = relationship(
         back_populates="filer", cascade="all, delete-orphan"
     )
-    filings: Mapped[list["Filing"]] = relationship(back_populates="filer")
+    filings: Mapped[list[Filing]] = relationship(back_populates="filer")
 
     @property
     def primary_edinet_code(self) -> str | None:
         """代表的なEDINETコードを返す"""
         if self.filer_codes:
-            return self.filer_codes[0].edinet_code
+            return cast(str | None, self.filer_codes[0].edinet_code)
         return None
 
     @property
@@ -67,7 +69,7 @@ class FilerCode(Base):
     )  # このコードでの提出者名（異なる場合）
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
-    filer: Mapped["Filer"] = relationship(back_populates="filer_codes")
+    filer: Mapped[Filer] = relationship(back_populates="filer_codes")
 
 
 class Issuer(Base):
@@ -86,7 +88,7 @@ class Issuer(Base):
         DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
     )
 
-    filings: Mapped[list["Filing"]] = relationship(back_populates="issuer")
+    filings: Mapped[list[Filing]] = relationship(back_populates="issuer")
 
 
 class Filing(Base):
@@ -111,9 +113,9 @@ class Filing(Base):
     pdf_flag: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
-    filer: Mapped["Filer"] = relationship(back_populates="filings")
-    issuer: Mapped[Optional["Issuer"]] = relationship(back_populates="filings")
-    holding_details: Mapped[list["HoldingDetail"]] = relationship(back_populates="filing")
+    filer: Mapped[Filer] = relationship(back_populates="filings")
+    issuer: Mapped[Issuer | None] = relationship(back_populates="filings")
+    holding_details: Mapped[list[HoldingDetail]] = relationship(back_populates="filing")
 
 
 class HoldingDetail(Base):
@@ -128,4 +130,4 @@ class HoldingDetail(Base):
     purpose: Mapped[str | None] = mapped_column(String(255), nullable=True)  # 保有目的
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
-    filing: Mapped["Filing"] = relationship(back_populates="holding_details")
+    filing: Mapped[Filing] = relationship(back_populates="holding_details")

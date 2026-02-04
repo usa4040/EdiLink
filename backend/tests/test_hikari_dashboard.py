@@ -1,10 +1,12 @@
 from datetime import UTC, datetime
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from backend import crud
 from backend.models import Filer, Filing, HoldingDetail, Issuer
 
 
-async def test_get_issuers_by_filer_includes_purpose(db):
+async def test_get_issuers_by_filer_includes_purpose(db: AsyncSession) -> None:
     # Prepare test data
     filer = Filer(edinet_code="E00001", name="Hikari Test", sec_code="9999")
     db.add(filer)

@@ -7,13 +7,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+
 import pandas as pd
 
 from backend.database import get_sync_db_session
 from backend.models import Issuer
 
 
-def update_issuer_names(csv_path: str):
+def update_issuer_names(csv_path: str) -> None:
     """EDINETコードリストからIssuerの名前を更新"""
 
     # CSV読み込み（Shift-JIS / cp932）
@@ -36,7 +37,7 @@ def update_issuer_names(csv_path: str):
     print(f"Total records in CSV: {len(df)}")
 
     # EDINETコードをキーにした辞書を作成
-    edinet_to_info = {}
+    edinet_to_info: dict[str, dict[str, str | None]] = {}
     for _, row in df.iterrows():
         code = str(row[edinet_col]).strip()
         if code and code != "nan":

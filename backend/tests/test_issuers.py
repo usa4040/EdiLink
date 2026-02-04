@@ -1,9 +1,12 @@
 from datetime import datetime
 
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from backend.models import Filer, FilerCode, Filing, HoldingDetail, Issuer
 
 
-async def test_get_issuers_basic(client, db):
+async def test_get_issuers_basic(client: AsyncClient, db: AsyncSession) -> None:
     """
     銘柄一覧が正しく取得できるか（ページネーション含む）
     """
@@ -33,7 +36,7 @@ async def test_get_issuers_basic(client, db):
     # 通常はID順や作成順になるはず。
 
 
-async def test_get_issuers_search(client, db):
+async def test_get_issuers_search(client: AsyncClient, db: AsyncSession) -> None:
     """
     銘柄名やコードで検索できるか
     """
@@ -67,7 +70,7 @@ async def test_get_issuers_search(client, db):
     assert data["items"][0]["name"] == "Cherry Inc"
 
 
-async def test_get_issuers_empty(client):
+async def test_get_issuers_empty(client: AsyncClient) -> None:
     """
     データがない場合に空リストが返るか
     """
@@ -78,7 +81,7 @@ async def test_get_issuers_empty(client):
     assert data["items"] == []
 
 
-async def test_get_issuer_ownerships(client, db):
+async def test_get_issuer_ownerships(client: AsyncClient, db: AsyncSession) -> None:
     """
     指定した銘柄を保有している投資家一覧が取得できるか
     """

@@ -8,37 +8,48 @@ import argparse
 import csv
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # パス設定
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
 
+import asyncio
+
+from sqlalchemy import select
+
 from backend.database import get_db_session
 from backend.models import Filer, FilerCode, Filing
 
 
-def export_filer_group_csv(edinet_code, output_file=None):
+async def export_filer_group_csv(edinet_code, output_file=None):
     if not output_file:
         # デフォルトの出力先を exports/ ディレクトリに設定
         output_file = os.path.join(project_root, "exports", f"{edinet_code}_group_filings.csv")
 
-    with get_db_session() as db:
+    async with get_db_session() as db:
         # Filer特定 (E04948から親IDを特定)
-        start_code = db.query(FilerCode).filter(FilerCode.edinet_code == edinet_code).first()
+        filer_code_stmt = select(FilerCode).where(FilerCode.edinet_code == edinet_code)
+        start_code = (await db.execute(filer_code_stmt)).scalar_one_or_none()
         if not start_code:
             print(f"Filer not found for code: {edinet_code}")
             return
 
         filer_id = start_code.filer_id
-        filer = db.query(Filer).filter(Filer.id == filer_id).first()
+        filer_stmt = select(Filer).where(Filer.id == filer_id)
+        filer = (await db.execute(filer_stmt)).scalar_one_or_none()
+        if not filer:
+            print(f"Filer not found for ID: {filer_id}")
+            return
 
         print(f"Exporting ALL filings for filer: {filer.name} (ID: {filer_id})...")
 
         # このFiler IDに紐づく全書類を取得
-        filings = db.query(Filing).filter(
-            Filing.filer_id == filer_id
-        ).order_by(Filing.submit_date.desc()).all()
+        filings_stmt = (
+            select(Filing).where(Filing.filer_id == filer_id).order_by(Filing.submit_date.desc())
+        )
+        result = await db.execute(filings_stmt)
+        filings = result.scalars().all()
 
         if not filings:
             print("No filings found.")
@@ -50,8 +61,8 @@ def export_filer_group_csv(edinet_code, output_file=None):
             os.makedirs(output_dir)
 
         # CSV書き出し
-        with open(output_file, 'w', newline='', encoding='utf-8-sig') as f:
-            writer = csv.writer(f)
+        with open(output_file, "w", newline="", encoding="utf-8-sig") as csv_file:
+            writer = csv.writer(csv_file)
             header = [
                 "doc_id", "submit_date", "doc_type", "doc_description",
                 "filer_code_used", "ordinance"
@@ -74,15 +85,12 @@ def export_filer_group_csv(edinet_code, output_file=None):
 
         # 直近30日の件数表示
         recent_count = 0
-        cutoff = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        # 簡易的に30日以内
-        from datetime import timedelta
-        cutoff = cutoff - timedelta(days=30)
+        cutoff = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=30)
 
         print(f"\n--- Recent Filings (Since {cutoff.strftime('%Y-%m-%d')}) ---")
-        for f in filings:
-            if f.submit_date >= cutoff:
-                print(f"{f.submit_date}: {f.doc_description} ({f.doc_id})")
+        for filing in filings:
+            if filing.submit_date and filing.submit_date >= cutoff:
+                print(f"{filing.submit_date}: {filing.doc_description} ({filing.doc_id})")
                 recent_count += 1
 
         print(f"\nTotal recent filings found: {recent_count}")
@@ -94,4 +102,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    export_filer_group_csv(args.edinet_code, args.out)
+    asyncio.run(export_filer_group_csv(args.edinet_code, args.out))

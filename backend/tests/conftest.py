@@ -1,15 +1,18 @@
 """
-非同期テスト設定（SQLite対応）
+非同期テスト設定（PostgreSQL対応）
 """
 
 import os
 import sys
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
 
 import httpx
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 
 # プロジェクトルートをパスに追加
@@ -21,16 +24,16 @@ from backend.main import app
 from backend.models import Base
 
 
-@pytest_asyncio.fixture(scope="session", autouse=True)
-async def setup_cache():
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
+async def setup_cache() -> AsyncGenerator[None, None]:
     """テストセッション開始時にキャッシュを初期化"""
     await init_cache()
     yield
 
 
 # テスト用の非同期データベースエンジン
-# 環境変数から取得、またはデフォルトのSQLite
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite+aiosqlite:///./test.db")
+# 環境変数から取得、またはデフォルトのPostgreSQL
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql+asyncpg://edinet:edinet@localhost:5432/edinet_test")
 
 # 非同期エンジン（テスト用）
 test_async_engine = create_async_engine(
@@ -51,7 +54,7 @@ TestingSessionLocal = async_sessionmaker(
 
 
 @pytest_asyncio.fixture(scope="function")
-async def db():
+async def db() -> AsyncGenerator[AsyncSession, None]:
     """テストごとにクリーンな非同期DBセッションを提供"""
     # テーブル作成
     async with test_async_engine.begin() as conn:
@@ -70,10 +73,10 @@ async def db():
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client(db):
+async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """FastAPIの非同期テストクライアントを提供。DBの依存性をオーバーライド"""
 
-    async def override_get_db():
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         try:
             yield db
         finally:
@@ -89,7 +92,7 @@ async def client(db):
 
 # 後方互換性のための同期版フィクスチャ（移行期間中）
 @pytest.fixture(scope="function")
-def sync_db():
+def sync_db() -> Generator[Session, None, None]:
     """同期版DBセッション（既存テストの互換性用）"""
     from backend.database import SyncSessionLocal, sync_engine
     from backend.models import Base as SyncBase
@@ -104,7 +107,7 @@ def sync_db():
 
 
 @pytest_asyncio.fixture(scope="function")
-async def sample_data(db):
+async def sample_data(db: AsyncSession) -> dict[str, Any]:
     """基本的なサンプルデータを作成"""
     from datetime import UTC, datetime
 
@@ -146,11 +149,11 @@ async def sample_data(db):
 
 
 @pytest.fixture(scope="function")
-def sync_client(sync_db):
+def sync_client(sync_db: Session) -> Generator[Any, None, None]:
     """同期版テストクライアント（既存テストの互換性用）"""
     from fastapi.testclient import TestClient
 
-    def override_get_db():
+    def override_get_db() -> Generator[Any, None, None]:
         try:
             yield sync_db
         finally:
