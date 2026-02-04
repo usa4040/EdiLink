@@ -39,7 +39,6 @@ warn_unused_configs = true
 disallow_untyped_defs = false  # 段階的に有効化
 disallow_incomplete_defs = false  # 段階的に有効化
 check_untyped_defs = true
-plugins = ["sqlalchemy.ext.mypy.plugin"]
 ignore_missing_imports = true
 show_error_codes = true
 show_column_numbers = true
