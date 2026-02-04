@@ -18,7 +18,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Database & Data
-*.db
+data/*.db
 /exports/
 
 # Cache

@@ -18,8 +18,8 @@ from typing import TypedDict, cast
 
 import pandas as pd
 import requests
-from sqlalchemy import extract
 from dotenv import load_dotenv
+from sqlalchemy import extract
 from tqdm import tqdm
 
 from backend.database import get_sync_db_session, sync_engine

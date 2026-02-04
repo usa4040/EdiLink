@@ -14,7 +14,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 import sqlite3
 from datetime import datetime, timedelta
-from typing import Optional
 
 import pandas as pd
 import yfinance as yf
@@ -34,7 +33,7 @@ def get_hikari_bulk_reports():
     conn = sqlite3.connect(get_db_path())
 
     query = """
-        SELECT 
+        SELECT
             f.id as filing_id,
             f.submit_date,
             f.doc_id,
@@ -80,7 +79,7 @@ def get_next_business_day(date: datetime) -> datetime:
     return next_day
 
 
-def get_stock_prices(ticker: str, start_date: datetime, end_date: Optional[datetime] = None):
+def get_stock_prices(ticker: str, start_date: datetime, end_date: datetime | None = None):
     """
     指定期間の株価データを取得
     """

@@ -2,7 +2,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -47,13 +47,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.state.limiter = limiter
-
-
-@app.exception_handler(RateLimitExceeded)
-async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Response:
-    """レート制限エラーのハンドラ"""
-    return _rate_limit_exceeded_handler(request, exc)
-
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 # CORS設定（フロントエンドからのアクセスを許可）
 app.add_middleware(
@@ -437,7 +431,7 @@ async def get_issuer_history(
             "name": issuer.name or issuer.edinet_code,
             "sec_code": issuer.sec_code,
         },
-        "filer": {"id": filer.id, "edinet_code": filer.edinet_code, "name": filer.name},
+        "filer": {"id": filer.id, "edinet_code": filer.primary_edinet_code, "name": filer.name},
         "history": history,
     }
 

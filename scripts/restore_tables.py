@@ -4,7 +4,6 @@ import sys
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import select
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

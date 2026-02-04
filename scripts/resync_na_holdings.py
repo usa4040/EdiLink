@@ -12,7 +12,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
 import asyncio
-from typing import Optional
 
 from sqlalchemy import delete, or_, select
 
@@ -20,7 +19,7 @@ from backend.database import get_db_session
 from backend.models import Filer, FilerCode, Filing, HoldingDetail
 
 
-async def list_na_holdings(filer_edinet_code: Optional[str] = None):
+async def list_na_holdings(filer_edinet_code: str | None = None):
     """N/Aの保有詳細レコードを一覧表示"""
     async with get_db_session() as db:
         stmt = (
@@ -49,7 +48,7 @@ async def list_na_holdings(filer_edinet_code: Optional[str] = None):
         return results
 
 
-async def delete_na_holdings(filer_edinet_code: Optional[str] = None, dry_run: bool = False):
+async def delete_na_holdings(filer_edinet_code: str | None = None, dry_run: bool = False):
     """N/Aの保有詳細レコードを削除"""
     async with get_db_session() as db:
         # 削除対象のIDを取得

@@ -1,7 +1,6 @@
 """
 データベースの全テーブルをCSVファイルにエクスポートするスクリプト
 """
-import csv
 import os
 import sys
 

@@ -7,8 +7,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import contextlib
 from datetime import datetime
-from typing import Optional
 
 import pandas as pd
 from sqlalchemy import select
@@ -76,7 +76,7 @@ async def import_csv_to_db(csv_path: str):
             filer = (await db.execute(f_get_stmt)).scalar_one_or_none()
 
             # Issuerを取得
-            issuer: Optional[Issuer] = None
+            issuer: Issuer | None = None
             issuer_code = row.get("issuerEdinetCode")
             if pd.notna(issuer_code) and issuer_code:
                 i_get_stmt = select(Issuer).where(Issuer.edinet_code == issuer_code)
@@ -85,10 +85,8 @@ async def import_csv_to_db(csv_path: str):
             # 提出日時のパース
             submit_date = None
             if pd.notna(row.get('submitDateTime')):
-                try:
+                with contextlib.suppress(Exception):
                     submit_date = datetime.strptime(str(row['submitDateTime']), '%Y-%m-%d %H:%M:%S')
-                except Exception:
-                    pass
 
             filing = Filing(
                 doc_id=doc_id,
