@@ -13,20 +13,30 @@ from datetime import datetime, timedelta
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
 
+import asyncio
+
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
+
 from backend.database import get_db_session
 from backend.models import Filing
 
 
-def explain_recent_filings(days=35):
+async def explain_recent_filings(days=35):
     print(f"Analyzing filings from the last {days} days...")
 
-    with get_db_session() as db:
+    async with get_db_session() as db:
         # 直近のデータを取得
         cutoff = datetime.now() - timedelta(days=days)
 
-        filings = db.query(Filing).filter(
-            Filing.submit_date >= cutoff
-        ).order_by(Filing.submit_date.desc()).all()
+        stmt = (
+            select(Filing)
+            .where(Filing.submit_date >= cutoff)
+            .order_by(Filing.submit_date.desc())
+            .options(joinedload(Filing.filer), joinedload(Filing.issuer))
+        )
+        result = await db.execute(stmt)
+        filings = result.scalars().all()
 
         print(f"Found {len(filings)} filings.")
 
@@ -41,11 +51,12 @@ def explain_recent_filings(days=35):
 
             # 光通信（E04948/E35239）関連のみ詳細表示
             # モデル上 filer.edinet_code はメインコード(E04948)になるので名前で判断などが確実
-            if "光通信" in filer.name:
-                 print(f"\n[Date: {f.submit_date}] DocID: {f.doc_id}")
-                 print(f"  Type: {f.doc_description}")
-                 print(f"  Target Issuer: {issuer_name}")
-                 # csv_flagがあれば簡易的に中身についての言及も可能だが今回は概要のみ
+            if filer and "光通信" in filer.name:
+                print(f"\n[Date: {f.submit_date}] DocID: {f.doc_id}")
+                print(f"  Type: {f.doc_description}")
+                print(f"  Target Issuer: {issuer_name}")
+                # csv_flagがあれば簡易的に中身についての言及も可能だが今回は概要のみ
+
 
 if __name__ == "__main__":
-    explain_recent_filings()
+    asyncio.run(explain_recent_filings())

@@ -17,7 +17,7 @@ with open(output_path, 'w', encoding='utf-8') as f:
 
     # 光通信が提出した報告書における保有銘柄と保有比率
     cursor.execute("""
-        SELECT 
+        SELECT
             f.submit_date,
             f.doc_id,
             f.doc_type,
@@ -58,7 +58,7 @@ with open(output_path, 'w', encoding='utf-8') as f:
     f.write("=" * 100 + "\n\n")
 
     cursor.execute("""
-        SELECT 
+        SELECT
             i.name as issuer_name,
             i.sec_code,
             hd.shares_held,
@@ -67,7 +67,7 @@ with open(output_path, 'w', encoding='utf-8') as f:
             f.doc_description
         FROM (
             SELECT issuer_id, MAX(submit_date) as max_date
-            FROM filings 
+            FROM filings
             WHERE filer_id = 1 AND issuer_id IS NOT NULL
             GROUP BY issuer_id
         ) latest

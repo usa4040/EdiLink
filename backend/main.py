@@ -47,7 +47,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 # CORS設定（フロントエンドからのアクセスを許可）
 app.add_middleware(
@@ -162,7 +162,7 @@ async def get_filers(
         result.append(
             schemas.FilerResponse(
                 id=filer.id,
-                edinet_code=filer.primary_edinet_code,
+                edinet_code=filer.primary_edinet_code or filer.edinet_code,
                 name=filer.name,
                 sec_code=filer.sec_code,
                 created_at=filer.created_at,
@@ -187,7 +187,7 @@ async def get_filer(request: Request, filer_id: int, db: AsyncSession = Depends(
     stats = await crud.get_filer_stats(db, filer.id)
     return schemas.FilerResponse(
         id=filer.id,
-        edinet_code=filer.primary_edinet_code,
+        edinet_code=filer.primary_edinet_code or filer.edinet_code,
         name=filer.name,
         sec_code=filer.sec_code,
         created_at=filer.created_at,
@@ -210,7 +210,7 @@ async def create_filer(
     new_filer = await crud.create_filer(db, filer.edinet_code, filer.name, filer.sec_code)
     return schemas.FilerResponse(
         id=new_filer.id,
-        edinet_code=new_filer.primary_edinet_code,
+        edinet_code=new_filer.primary_edinet_code or new_filer.edinet_code,
         name=new_filer.name,
         sec_code=new_filer.sec_code,
         created_at=new_filer.created_at,
